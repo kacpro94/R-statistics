@@ -1,0 +1,321 @@
+---
+title: "Projekt3"
+author: "Szymon Popkiewicz, Kacper Prorok, Jan Pryl"
+date: "2024-01-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(moments)
+library(MASS)
+set.seed(123)
+```
+
+## Jak zmienia się dokładność oszacowania w zależności od liczby danych
+
+W naszym projekcie używamy dwóch funkcji, które posłużą nam do szacowania parametrów rozkładu weibulla.
+
+-   Pierwsza funkcja
+
+```{r}
+Badanie <- function(l, sh,sc) {
+  dane <- rweibull(l, shape=sh, scale=sc)
+  optim(c(sh,sc), funkcja_w, dane = dane,lower = c(0.0000001 , 0.0001), method = "L-BFGS-B" )
+}
+```
+
+-   Druga funkcja
+
+```{r}
+Badanie1<-function(l,sh,sc){
+  data <- rweibull(l, shape = sh, scale = sc)
+fit <- fitdistr(data, densfun = "weibull", start = list(shape = 1, scale =1))
+  return(fit$estimate)
+}
+```
+
+Używamy dwóch funkcji, ponieważ dla niektórych parametrów R nie radził sobie z pierwszą funkcją.
+
+Natomiast tutaj mamy funkcję liczącą sumę logarytmów prawdopodobieństw:
+
+```{r,warning=FALSE}
+funkcja_w <- function(dane,parametry) {
+  -sum(log(dweibull(dane, shape = parametry[1], scale = parametry[2])))
+}
+```
+
+```{r,echo=FALSE,warning=FALSE}
+# 
+# wyniki_1_1 <- data.frame()
+# 
+# # for (i in 1:300) {
+# # wyniki_1_1 <- rbind(wyniki_1_1,c(Badanie1(50,1,1),Badanie1(100,1,1),Badanie1(200,1,1),Badanie1(500,1,1),Badanie1(1000,1,1),Badanie1(5000,1,1),Badanie1(10000,1,1)))
+# # }
+# 
+# 
+# wyniki_1_5 <- data.frame()
+#                      
+# 
+# 
+# # for (i in 1:300) {
+# #   wyniki_1_5 <- rbind(wyniki_1_5, c(Badanie(50,1,5)$par,Badanie(100,1,5)$par,
+# #                                     Badanie(200,1,5)$par,Badanie(500,1,5)$par,
+# #                                     Badanie(1000,1,5)$par,Badanie(5000,1,5)$par,
+# #                                     Badanie(10000,1,5)$par))
+# # }
+# wyniki_4_5 <- data.frame()
+# 
+# # for (i in 1:300) {
+# #   wyniki_4_5 <- rbind(wyniki_4_5, c(Badanie(50,4,5)$par,Badanie(100,4,5)$par,
+# #                                     Badanie(200,4,5)$par,Badanie(500,4,5)$par,
+# #                                     Badanie(1000,4,5)$par,Badanie(5000,4,5)$par,
+# #                                     Badanie(10000,4,5)$par))
+# #   }
+# 
+# 
+# colnames(wyniki_1_1)<-c("sh50","sc50","sh100","sc100","sh200","sc200","sh500","sc500","sh1000","sc1000",
+#                          "sh5000","sc5000","sh10000","sc10000")
+# 
+# colnames(wyniki_1_5)<-c("sh50","sc50","sh100","sc100","sh200","sc200","sh500","sc500","sh1000","sc1000",
+#                          "sh5000","sc5000","sh10000","sc10000")
+# colnames(wyniki_4_5)<-c("sh50","sc50","sh100","sc100","sh200","sc200","sh500","sc500","sh1000","sc1000",
+#                          "sh5000","sc5000","sh10000","sc10000")
+# summary_4_5<-rbind(colMeans(wyniki_4_5),sapply(wyniki_4_5, sd),sapply(wyniki_4_5, skewness),sapply(wyniki_4_5, kurtosis))
+# summary_4_5<-as.data.frame(summary_4_5)
+# rownames(summary_4_5)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+# summary_4_5<-t(summary_4_5)
+# 
+# summary_1_5<-rbind(colMeans(wyniki_1_5),sapply(wyniki_1_5, sd),sapply(wyniki_1_5, skewness),sapply(wyniki_1_5, kurtosis))
+# summary_1_5<-as.data.frame(summary_1_5)
+# rownames(summary_1_5)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+# summary_1_5<-t(summary_1_5)
+# 
+# summary_1_1<-rbind(colMeans(wyniki_1_1),sapply(wyniki_1_1, sd),sapply(wyniki_1_1, skewness),sapply(wyniki_1_1, kurtosis))
+# summary_1_1<-as.data.frame(summary_1_1)
+# rownames(summary_1_1)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+# summary_1_1<-t(summary_1_1)
+# 
+# datash_1_5<-as.data.frame(summary_1_5[seq(1,14,by=2),])
+# datasc_1_5<-as.data.frame(summary_1_5[seq(2,14,by=2),])
+# 
+# datash_4_5<-as.data.frame(summary_4_5[seq(1,14,by=2),])
+# datasc_4_5<-as.data.frame(summary_4_5[seq(2,14,by=2),])
+# 
+# 
+# datash_1_1<-as.data.frame(summary_1_1[seq(1,14,by=2),])
+# datasc_1_1<-as.data.frame(summary_1_1[seq(2,14,by=2),])
+```
+
+```{r}
+wyniki_4_10 <- data.frame()
+
+for (i in 1:300) {
+  wyniki_4_10 <- rbind(wyniki_4_10, c(Badanie(50,4,10)$par,Badanie(100,4,10)$par,
+                                     Badanie(200,4,10)$par,Badanie(500,4,10)$par,
+                                     Badanie(1000,4,10)$par,Badanie(5000,4,10)$par,
+                                     Badanie(10000,4,10)$par))
+}
+colnames(wyniki_4_10)<-c("sh50","sc50","sh100","sc100","sh200","sc200","sh500","sc500","sh1000","sc1000",
+                         "sh5000","sc5000","sh10000","sc10000")
+
+summary_4_10<-rbind(colMeans(wyniki_4_10),sapply(wyniki_4_10, sd),sapply(wyniki_4_10, skewness),sapply(wyniki_4_10, kurtosis))
+summary_4_10<-as.data.frame(summary_4_10)
+rownames(summary_4_10)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_4_10<-t(summary_4_10)
+
+datash_4_10<-as.data.frame(summary_4_10[seq(1,14,by=2),])
+datasc_4_10<-as.data.frame(summary_4_10[seq(2,14,by=2),])
+
+
+shapiro.test(wyniki_4_10[,1])
+shapiro.test(wyniki_4_10[,2])
+wilkSH_4_10<-data.frame()
+wilkSC_4_10<-data.frame()
+
+for(i in seq(1,14,by=2)){
+wilkSH_4_10<-rbind(wilkSH_4_10,shapiro.test(wyniki_4_10[,i])$p.value)
+}
+
+for(i in seq(2,14,by=2)){
+wilkSC_4_10<-rbind(wilkSC_4_10,shapiro.test(wyniki_4_10[,i])$p.value)
+}
+
+```
+
+## dasdas
+
+```{r}
+datash_4_10
+```
+
+W przypadku oszacowanego parametru shape dla rozkładu Weibulla o parametrach scale=10,shape=4 widzimy, że średnia zbiega się do oczekiwanej czwórki. Odchylenie standardowe wyraźnie maleje wraz ze wzrostem ilości danych.
+
+Kształt rozkładu oszacowanego parametru shape "zbiega" się do rozkładu symetrycznego (skośność maleje wraz ze wzrostem ilości danych). Kurtoza natomiast **orbituje** wokół 3. (z odchyleniami do 0.6).
+
+```{r}
+datasc_4_10
+```
+
+Średnia oszacowanego parametru `scale` z rozkładu Weibulla o parametrach scale=10,shape=4 nie wykazuje większych zmian podczas zmieniania ilości danych. Odchylenie standardowe natomiast maleje.
+
+Skośność we wszystkich przypadkach jest bliska 0, co oznacza że rozkład szacowanego parametru jest raczej symetryczny niezależnie od ilości danych. Kurtoza ponownie zmienia się niemonotonicznie, ale cały czas jest bliska wartości 3.
+
+## Sprawdzanie czy oszacowania parametrów są zgodne z rozkładem normalnym
+
+**H0:dane są zgodne z rozkładem normalnym**
+
+**H1:dane nie są zgodne z rozkładem normalnym**
+
+Dla danych z rozkladu weibulla o parametrach scale=10 oraz shape=4 wartości p-value w teście shapiro-wilka wyglądają następująco:
+
+```{r}
+wilkSC_4_10
+```
+
+Większość rozkładów oszacowań parametrów scale jest zgodna z rozkładem normalnym. Wyjątkiem jest, gdy liczność danych wynosi 1000 - wtedy p-value wyszło mniejsze od 0.05, co oznacza że odrzucamy H0. Można więc powiedzieć, że rozkład oszacowań scale jest raczej niezależny od liczności danych i przeważnie jest zgodny z rozkładem normalnym.
+
+```{r}
+wilkSH_4_10
+```
+
+Natomiast dla rozkładów oszacowań parametrów shape niezależnie od liczności danych żaden rozkład nie jest zgodny z rozkładem normalnym (p-value wszędzie jest mniejsze od 0.05).
+
+Natomiast dla rozkładów oszacowań parametrów `shape` możemy powiedzieć, że dla liczności większej lub równej 500 są zgodne z rozkładem normalnym. Zatem w tym przypadku możemy stwierdzić, że normalność rozkładu oszacowań parametru jest zależna od liczności danych.
+
+
+
+
+
+
+
+##Szacowanie parametru scale
+
+```{r}
+funkcja_w2 <- function(dane, shape, scale) {
+  -sum(log(dweibull(dane, shape = shape, scale = scale)))
+}
+Badanie2 <- function(l, sh,sc) {
+  dane <- rweibull(l, shape=sh, scale=sc)
+  optim(sc, funkcja_w2, dane = dane,shape = sh, lower = c(0.0000001 , 0.0001), method = "L-BFGS-B" )
+}
+```
+
+```{r}
+wyniki_scale_4_10 <- data.frame()
+for (i in 1:300) {
+wyniki_scale_4_10 <- rbind(wyniki_scale_4_10, c(Badanie2(50,4,10)$par,Badanie2(100,4,10)$par,
+                                     Badanie2(200,4,10)$par,Badanie2(500,4,10)$par,
+                                     Badanie2(1000,4,10)$par,Badanie2(5000,4,10)$par,
+                                     Badanie2(10000,4,10)$par))
+}
+
+colnames(wyniki_scale_4_10)<-c("sc50","sc100","sc200","sc500","sc1000","sc5000","sc10000")
+
+summary_wyniki_scale_4_10<-rbind(colMeans(wyniki_scale_4_10),sapply(wyniki_scale_4_10, sd),sapply(wyniki_scale_4_10, skewness),sapply(wyniki_scale_4_10, kurtosis))
+summary_wyniki_scale_4_10<-as.data.frame(summary_wyniki_scale_4_10)
+rownames(summary_wyniki_scale_4_10)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_scale_4_10<-t(summary_wyniki_scale_4_10)
+```
+
+##Szacowanie parametru shape
+
+```{r}
+Badanie3 <- function(l, sh,sc) {
+  dane <- rweibull(l, shape=sh, scale=sc)
+  optim(sh, funkcja_w2, dane = dane,scale = sc, lower = c(0.0000001 , 0.0001), method = "L-BFGS-B" )
+}
+```
+
+```{r}
+wyniki_shape_4_10 <- data.frame()
+for (i in 1:300) {
+wyniki_shape_4_10 <- rbind(wyniki_shape_4_10, c(Badanie3(50,4,10)$par,Badanie3(100,4,10)$par,
+                                     Badanie3(200,4,10)$par,Badanie3(500,4,10)$par,
+                                     Badanie3(1000,4,10)$par,Badanie3(5000,4,10)$par,
+                                     Badanie3(10000,4,10)$par))
+}
+
+colnames(wyniki_shape_4_10)<-c("sh50","sh100","sh200","sh500","sh1000","sh5000","sh10000")
+
+summary_wyniki_shape_4_10<-rbind(colMeans(wyniki_shape_4_10),sapply(wyniki_shape_4_10, sd),sapply(wyniki_shape_4_10, skewness),sapply(wyniki_shape_4_10, kurtosis))
+summary_wyniki_shape_4_10<-as.data.frame(summary_wyniki_shape_4_10)
+rownames(summary_wyniki_shape_4_10)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_shape_4_10<-t(summary_wyniki_shape_4_10)
+```
+
+##Czy zachowanie estymatorów MNW różni się w zależności od rzeczywistej wartości szacowanego parametru 'scale'
+
+```{r}
+wyniki_scale_4_5 <- data.frame()
+for (i in 1:300) {
+wyniki_scale_4_5 <- rbind(wyniki_scale_4_5, c(Badanie2(50,4,5)$par,Badanie2(100,4,5)$par,
+                                     Badanie2(200,4,5)$par,Badanie2(500,4,5)$par,
+                                     Badanie2(1000,4,5)$par,Badanie2(5000,4,5)$par,
+                                     Badanie2(10000,4,5)$par))
+}
+
+colnames(wyniki_scale_4_5)<-c("sc50","sc100","sc200","sc500","sc1000","sc5000","sc10000")
+
+summary_wyniki_scale_4_5<-rbind(colMeans(wyniki_scale_4_5),sapply(wyniki_scale_4_5, sd),sapply(wyniki_scale_4_5, skewness),sapply(wyniki_scale_4_5, kurtosis))
+summary_wyniki_scale_4_5<-as.data.frame(summary_wyniki_scale_4_5)
+rownames(summary_wyniki_scale_4_5)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_scale_4_5<-t(summary_wyniki_scale_4_5)
+
+
+wyniki_scale_4_15 <- data.frame()
+for (i in 1:300) {
+wyniki_scale_4_15 <- rbind(wyniki_scale_4_15, c(Badanie2(50,4,15)$par,Badanie2(100,4,15)$par,
+                                     Badanie2(200,4,15)$par,Badanie2(500,4,15)$par,
+                                     Badanie2(1000,4,15)$par,Badanie2(5000,4,15)$par,
+                                     Badanie2(10000,4,15)$par))
+}
+
+colnames(wyniki_scale_4_15)<-c("sc50","sc100","sc200","sc500","sc1000","sc5000","sc10000")
+
+summary_wyniki_scale_4_15<-rbind(colMeans(wyniki_scale_4_15),sapply(wyniki_scale_4_15, sd),sapply(wyniki_scale_4_15, skewness),sapply(wyniki_scale_4_15, kurtosis))
+summary_wyniki_scale_4_15<-as.data.frame(summary_wyniki_scale_4_15)
+rownames(summary_wyniki_scale_4_15)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_scale_4_15<-t(summary_wyniki_scale_4_15)
+```
+
+##Czy zachowanie estymatorów MNW różni się w zależności od rzeczywistej wartości szacowanego parametru 'scale'
+
+```{r}
+wyniki_shape_1_10 <- data.frame()
+for (i in 1:300) {
+wyniki_shape_1_10 <- rbind(wyniki_shape_1_10, c(Badanie3(50,1,10)$par,Badanie3(100,1,10)$par,
+                                     Badanie3(200,1,10)$par,Badanie3(500,1,10)$par,
+                                     Badanie3(1000,1,10)$par,Badanie3(5000,1,10)$par,
+                                     Badanie3(10000,1,10)$par))
+}
+
+colnames(wyniki_shape_1_10)<-c("sh50","sh100","sh200","sh500","sh1000","sh5000","sh10000")
+
+summary_wyniki_shape_1_10<-rbind(colMeans(wyniki_shape_1_10),sapply(wyniki_shape_1_10, sd),sapply(wyniki_shape_1_10, skewness),sapply(wyniki_shape_1_10, kurtosis))
+summary_wyniki_shape_1_10<-as.data.frame(summary_wyniki_shape_1_10)
+rownames(summary_wyniki_shape_1_10)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_shape_1_10<-t(summary_wyniki_shape_1_10)
+
+
+
+
+wyniki_shape_10_10 <- data.frame()
+for (i in 1:300) {
+wyniki_shape_10_10 <- rbind(wyniki_shape_10_10, c(Badanie3(50,10,10)$par,Badanie3(100,10,10)$par,
+                                     Badanie3(200,10,10)$par,Badanie3(500,10,10)$par,
+                                     Badanie3(1000,10,10)$par,Badanie3(5000,10,10)$par,
+                                     Badanie3(10000,10,10)$par))
+}
+
+colnames(wyniki_shape_10_10)<-c("sh50","sh100","sh200","sh500","sh1000","sh5000","sh10000")
+
+summary_wyniki_shape_10_10<-rbind(colMeans(wyniki_shape_10_10),sapply(wyniki_shape_10_10, sd),sapply(wyniki_shape_10_10, skewness),sapply(wyniki_shape_10_10, kurtosis))
+summary_wyniki_shape_10_10<-as.data.frame(summary_wyniki_shape_10_10)
+rownames(summary_wyniki_shape_10_10)<-c("srednia","odchylenie", "skosnosc","kurtoza")
+summary_wyniki_shape_10_10<-t(summary_wyniki_shape_10_10)
+```

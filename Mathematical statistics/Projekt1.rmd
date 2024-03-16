@@ -1,0 +1,713 @@
+---
+title: "Rpism_projekt5"
+author: 'Szymon Pupkiewicz, Kacper Prorok, Jan Pryl'
+date: "2023-12-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Charakterystyki rozkładu
+
+Niech **Y** będzie zmienną o rozkładzie normalnym z parametrami 'm' i 'sigma'. Wtedy zmienną losową 
+
+\\(X = e^Y\\)  nazywamy zmienną logarytmiczno - normalną.
+
+\[ E(X) = \exp\left(m + \frac{\sigma^2}{2}\right) \]
+\[ \text{Var}(X) = \exp(2 \cdot m + \sigma^2) \cdot (\exp(\sigma^2) - 1) \]
+\[ Skosnosc = (\exp(\sigma^2) + 2) \cdot \sqrt{\exp(\sigma^2) - 1}\]
+\[ Kurtoza = \frac{\exp(6 \cdot \sigma^2) - 4 \cdot \exp(3 \cdot \sigma^2) + 6 \cdot \exp(\sigma^2) - 3}{\exp(4 \cdot m + 2 \cdot \sigma^2) \cdot (\exp(\sigma^2) - 1)^4}\]
+
+https://pl.wikipedia.org/wiki/Rozk%C5%82ad_logarytmicznie_normalny
+
+
+## Przykładowo dla Y o parametrach m = 0 oraz sigma = 1/8, cechy rozkładu X wyglądają następująco:
+
+
+```{r}
+meanlog <- 0
+sdlog <- 1/8
+
+mean_ln <- exp(meanlog + (0.5 * sdlog^2)) 
+sd_ln <- sqrt((exp(sdlog^2) - 1) * exp(2 * meanlog + sdlog^2))  
+skosnosc_ln <- (exp(sdlog^2) + 2) * sqrt(exp(sdlog^2) - 1)
+kurtoza_ln<-(exp(6*sdlog^2) - 4*exp(3*sdlog^2) + 6*exp(sdlog^2) - 3)/
+  (exp(4*meanlog + 2*sdlog^2) * (exp(sdlog^2) -1)^4)
+```
+
+```{r echo=FALSE}
+# Wyświetlenie charakterystyk
+cat("Wartość oczekiwana:", mean_ln, "\n")
+cat("Odchylenie standardowe:", sd_ln, "\n")
+cat("Skośność:", skosnosc_ln, "\n")
+cat("Kurtoza:", kurtoza_ln, "\n")
+
+```
+
+## Wykres gęstości zmiennej losowej X:
+
+```{r}
+dlnorm_wykres <- function(x,sigma) {
+  dlnorm(x, meanlog = 0, sdlog = sigma)
+}
+
+# Tworzenie wykresu za pomocą funkcji curve
+curve(dlnorm_wykres(x,1/8), from = 0.01, to = 4, col = "blue", 
+      xlab = "Wartości", ylab = "Gęstość",
+      main = "Wykres gęstości dla sigma = 1/8")
+
+curve(dlnorm_wykres(x,1), from = 0.01, to = 4, col = "darkgreen", 
+      xlab = "Wartości", ylab = "Gęstość",
+      main = "Wykres gęstości dla sigma = 1")
+
+curve(dlnorm_wykres(x,10), from = 0.01, to = 4, col = "black", 
+      xlab = "Wartości", ylab = "Gęstość",
+      main = "Wykres gęstości dla sigma = 10")
+
+
+
+```
+
+
+## Tworzymy funkcję losującą wartości z rozkładu logarytmiczno-normalnego.
+
+
+```{r}
+library(moments)
+data_gen <- function(k, sd){
+  all_generated_data <- list()
+set.seed(23)
+for (i in 1:300) {
+  generated_data <- rlnorm(n = k, meanlog = 0, sdlog = sd)
+  all_generated_data[[i]] <- generated_data
+}
+srednie <- sapply(all_generated_data, mean)
+srednia_srednich<-mean(srednie)
+odchylenie_srednich<-sd(srednie)
+skosnosc_srednich<-skewness(srednie)
+kurtoza_srednich<-kurtosis(srednie)
+
+shapiro_test <- shapiro.test(srednie) #bazowo w R jest on wykonywany dla alfa = 0.05
+
+wyniki <- list(srednie, srednia_srednich, odchylenie_srednich, skosnosc_srednich, kurtoza_srednich, shapiro_test)
+
+return(wyniki)
+
+}
+
+
+```
+
+
+
+```{r}
+wyniki1 <- data_gen(5, 1/8)
+
+wyniki2 <- data_gen(10, 1/8)
+
+wyniki3 <- data_gen(20, 1/8)
+
+wyniki4 <- data_gen(30, 1/8)
+
+wyniki5 <- data_gen(50, 1/8)
+
+wyniki6 <- data_gen(100, 1/8)
+
+wyniki7 <- data_gen(200, 1/8)
+
+wyniki8 <- data_gen(500, 1/8)
+
+wyniki9 <- data_gen(1000, 1/8)
+
+
+```
+
+# Wyniki dla parametru sigma = 1/8:
+
+```{r message=FALSE, include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE, main = "Wykres pudełkowy dla średnich kolejnych k")
+```
+
+Wraz ze wzrostem k dane są coraz bardziej skupione wokół jednej wartości. 
+
+```{r message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+
+```
+
+Wraz ze wzrostem k średnia ciągle oscyluje wokół wartości 1. Odchylenie standardowe natomiast maleje. Na podstawie testu Shapiro-Wilka możemy założyć, że dla k>=20 rozkłady średnich są zbliżone do rozkładu normalnego.
+
+```{r message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+
+```
+
+# Wyniki dla sigma = 1:
+
+```{r}
+wyniki1 <- data_gen(5, 1)
+
+wyniki2 <- data_gen(10, 1)
+
+wyniki3 <- data_gen(20, 1)
+
+wyniki4 <- data_gen(30, 1)
+
+wyniki5 <- data_gen(50, 1)
+
+wyniki6 <- data_gen(100, 1)
+
+wyniki7 <- data_gen(200, 1)
+
+wyniki8 <- data_gen(500, 1)
+
+wyniki9 <- data_gen(1000, 1)
+
+```
+
+
+```{r message=FALSE, include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE, main = "Wykres pudełkowy dla średnich kolejnych k")
+```
+
+Wraz ze wzrostem k możemy zauważyć, że wartości ponownie zaczynają oscylować wokół jednej wartości oraz lekki wzrost mediany. Ze względu na wzrost sigmy w rozkładzie logarytmiczno-normalnym widzimy znaczący wzrost rozstrzału między średnią, a wartościami odstającymi.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+```
+
+Średnia wraz ze wzrostem k nie ulega większej zmianie, w przeciwieństwie do odchylenia standardowego, które maleje, oraz skośności - która dla mniejszych k wskazuje na rozkład prawostronnie skośny, a dla większych k zamienia się na rozkład bardziej symetryczne. Wiąże się to również z wynikami Shapiro-wilka, które wykazały że tylko dla k>=500 jest zgodny z rozkładem normalnym.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+```
+
+# Wyniki dla sigma = 10:
+
+```{r}
+wyniki1 <- data_gen(5, 10)
+
+wyniki2 <- data_gen(10, 10)
+
+wyniki3 <- data_gen(20, 10)
+
+wyniki4 <- data_gen(30, 10)
+
+wyniki5 <- data_gen(50, 10)
+
+wyniki6 <- data_gen(100, 10)
+
+wyniki7 <- data_gen(200, 10)
+
+wyniki8 <- data_gen(500, 10)
+
+wyniki9 <- data_gen(1000, 10)
+
+```
+
+
+```{r message=FALSE, include=FALSE}
+library(tidyverse)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE, log = "y",title="Wykres pudełkowy dla kolejnych k (skala logarytmiczna")
+
+#Używamy skali logarytmicznej dla lepszej wizualizacji wyników
+```
+
+Ze względu na dużą wartość parametru sigma losowane wartości mają bardzo duży rozstrzał (na co wskazuje odchylenie standardowe). Można zauważyć, że wraz ze wzrtostem k boxplot przemieszcza się wzdłuż osi Y ze względu na większe prawdopodobieństwo wylosowania wartości zawyżającej średnią całej próbki. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k (skala logarytmiczna)",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()+
+  scale_x_continuous(trans = "log10")
+```
+
+Średnia wraz ze wzrostem k znacznie rośnie, tak jak odchylenie standardowe. Żaden rozkład nie jest zgodny z rozkładem normalnym.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()+
+  scale_x_continuous(trans = "log10")
+
+```
+
+
+
+
+# Wariant z podnoszeniem do kwadratu
+## Rozkład (losuję próbkę n = 10 000)
+```{r warning=FALSE}
+set.seed(42) 
+data <- rlnorm(10000,0,1)
+
+# Podniesienie wszystkich danych do kwadratu
+data_squared <- data^2
+
+#wartosc oczekiwana
+mean(data_squared)
+#odchylenie standardowe
+sd(data_squared)
+#kurtoza
+kurtosis(data_squared)
+#skosnosc
+skewness(data_squared)
+
+
+
+df <- data.frame(Value = c(data, data_squared),
+                 Type = rep(c("bez kwadratu", "podniesione do kwadratu"), each = length(data)))
+
+
+ggplot(df, aes(x = Value, fill = Type)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Wykresy gęstości dla sigmy=1",
+       x = "Value",
+       y = "Density") +
+      xlim(0,9)+
+  scale_fill_manual(values = c("blue", "red"))  
+
+
+```
+
+Gdy podniesiemy wartości do kwadratu, to widzimy że więcej wartości znajdzie się poniżej ok. 1 oraz powyżej ok. 4, co jest spowodowane tym że wartości poniżej 1 do kwadratu dają nam jescze mniejsze wartości, a powyżej jeden coraz bardziej większe.
+
+
+## Funkcję losująca wartości z rozkładu logarytmiczno-normalnego, wartości podnosimy do kwadratu.
+
+```{r}
+library(moments)
+data_gen_square <- function(k, sd){
+  all_generated_data <- list()
+set.seed(23)
+for (i in 1:300) {
+  generated_data <- rlnorm(n = k, meanlog = 0, sdlog = sd)
+  all_generated_data[[i]] <- generated_data^2
+}
+srednie <- sapply(all_generated_data, mean)
+srednia_srednich<-mean(srednie)
+odchylenie_srednich<-sd(srednie)
+skosnosc_srednich<-skewness(srednie)
+kurtoza_srednich<-kurtosis(srednie)
+
+shapiro_test <- shapiro.test(srednie)
+
+wyniki <- list(srednie, srednia_srednich, odchylenie_srednich, skosnosc_srednich, kurtoza_srednich, shapiro_test)
+
+return(wyniki)
+
+}
+
+```
+
+
+
+
+## Wyniki dla sigma = 1/8:
+
+```{r}
+
+wyniki1 <- data_gen_square(5, 1/8)
+
+wyniki2 <- data_gen_square(10, 1/8)
+
+wyniki3 <- data_gen_square(20, 1/8)
+
+wyniki4 <- data_gen_square(30, 1/8)
+
+wyniki5 <- data_gen_square(50, 1/8)
+
+wyniki6 <- data_gen_square(100, 1/8)
+
+wyniki7 <- data_gen_square(200, 1/8)
+
+wyniki8 <- data_gen_square(500, 1/8)
+
+wyniki9 <- data_gen_square(1000, 1/8)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE)
+```
+
+Wraz ze wzrostem k dane są coraz bardziej skupione wokół jednej wartości. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+```
+
+Wraz ze wzrostem k średnia ciągle oscyluje wokół wartości 1. Odchylenie standardowe natomiast maleje. Na podstawie testu Shapiro-Wilka możemy założyć, że dla k>=20 rozkłady średnich są zbliżone do rozkładu normalnego. W porównaniu do wariantu bez podnoszenia do kwadratu widzimy, że odchylenie standardowe jest większe.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+```
+
+## Wyniki dla sigma = 1:
+
+```{r}
+
+wyniki1 <- data_gen_square(5, 1)
+
+wyniki2 <- data_gen_square(10, 1)
+
+wyniki3 <- data_gen_square(20, 1)
+
+wyniki4 <- data_gen_square(30, 1)
+
+wyniki5 <- data_gen_square(50, 1)
+
+wyniki6 <- data_gen_square(100, 1)
+
+wyniki7 <- data_gen_square(200, 1)
+
+wyniki8 <- data_gen_square(500, 1)
+
+wyniki9 <- data_gen_square(1000, 1)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE)
+```
+
+W porównianiu do wariantu bez kwadratu widzimy, że wartości odstające są dużo większe.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+
+
+
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()
+```
+
+Każdy wykres jest prawnostronnie skośny, średnia wraz ze wzrostem k rośnie(w przeciwieństwie do wariantu bez kwadratu), a odchylenie standardowe maleje. Żaden rozkład nie jest zgodny z normalnym, według testu Shapiro-Wilka
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k (logarytmiczny)",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()+
+  scale_x_continuous(trans = "log10")
+```
+
+## Wyniki dla sigma = 10:
+
+
+```{r}
+
+wyniki1 <- data_gen_square(5, 10)
+
+wyniki2 <- data_gen_square(10, 10)
+
+wyniki3 <- data_gen_square(20, 10)
+
+wyniki4 <- data_gen_square(30, 10)
+
+wyniki5 <- data_gen_square(50, 10)
+
+wyniki6 <- data_gen_square(100, 10)
+
+wyniki7 <- data_gen_square(200, 10)
+
+wyniki8 <- data_gen_square(500, 10)
+
+wyniki9 <- data_gen_square(1000, 10)
+```
+
+```{r}
+boxplot(wyniki1[[1]], wyniki2[[1]], wyniki3[[1]], wyniki4[[1]], wyniki5[[1]], wyniki6[[1]], wyniki7[[1]], wyniki8[[1]], wyniki9[[1]], names = c("5", "10", "20", "30","50","100","200","500","1000"), beside = TRUE, log = "y")
+
+#Używamy skali logarytmicznej dla lepszej wizualizacji wyników
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+l <- c(2, 3, 4, 5)
+stat <- rbind(wyniki1[l], wyniki2[l], wyniki3[l], wyniki4[l], wyniki5[l], wyniki6[l], wyniki7[l], wyniki8[l], wyniki9[l])
+pval <- rbind(wyniki1[[6]]$p.value, wyniki2[[6]]$p.value, wyniki3[[6]]$p.value, wyniki4[[6]]$p.value, wyniki5[[6]]$p.value, wyniki6[[6]]$p.value, wyniki7[[6]]$p.value, wyniki8[[6]]$p.value, wyniki9[[6]]$p.value)
+stat <- cbind(stat, pval)
+#colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value")
+rownames(stat) <- c("5", "10", "20", "30", "50", "100", "200", "500", "1000")
+zgod<-rbind(ifelse(wyniki1[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki2[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki3[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki4[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki5[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki6[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki7[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki8[[6]]$p.value>0.05, "Zgodny","Niezgodny"),
+            ifelse(wyniki9[[6]]$p.value>0.05, "Zgodny","Niezgodny"))
+stat<-cbind(stat, zgod)
+colnames(stat) <- c("Srednia", "Odchylenie standardowe", "Skosnosc", "Kurtoza", "P-Value", "Zgodnosc")
+
+print(stat)
+
+df <- data.frame(
+  Kolumna1 = c(rep('5', length(wyniki1[[1]])), rep('10', length(wyniki2[[1]])), rep('20',length(wyniki3[[1]])),
+               rep('30', length(wyniki1[[1]])), rep('50', length(wyniki2[[1]])), rep('100',length(wyniki3[[1]])),
+               rep('200', length(wyniki1[[1]])), rep('500', length(wyniki2[[1]])), rep('1000',length(wyniki3[[1]]))
+
+
+               ),
+  Kolumna2 = c(wyniki1[[1]], wyniki2[[1]],wyniki3[[1]],wyniki4[[1]], wyniki5[[1]],wyniki6[[1]],wyniki7[[1]], wyniki8[[1]],wyniki9[[1]])
+)
+
+df$Kolumna1 <- factor(df$Kolumna1, levels = c('5', '10', '20', '30', '50', '100', '200', '500', '1000'))
+df %>%
+  ggplot(aes(x=Kolumna2))+
+  geom_histogram(position = "identity")+
+  facet_wrap(~Kolumna1, ncol=3)+
+  labs(title = "Histogramy rozkładów średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()+
+  scale_x_continuous(trans = "log10")
+```
+
+Dla sigmy 10 w wariancie podniesionym do kwadratu nie ma zbyt wielu różnic, poza tym że wartości są kwadratowo większe.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+df %>%
+  ggplot(aes(x=Kolumna2,fill=Kolumna1 ))+
+  geom_density(alpha=0.5)+
+  labs(title = "Rozkład gęstości średnich dla rożnych k",x="",y = "Liczba obserwacji")+ 
+  theme_minimal()+
+  scale_x_continuous(trans = "log10")
+```
+
+
+
+# Podsumowanie
+
+Ze względu na własność rozkładu normalnego z wartością oczekiwaną= 0 wiemy, że na losowe wartości poniżej 0 jak i powyżej zera mamy po 50% szans wylosowania. Wynika z tego, że dla naszego rozkładu logarytmicznego-normalnego wartością krytyczną jest 1 (e^0). e o potęgach mniejszych od 0 dadzą nam wartości z przedziału (0,1), podczas gdy wykładniki>0 dadzą nam wartości z przedziału (1,+oo). 
+
+Dla σ<1, rozkład logarytmiczno-normalny charakteryzuje się większą koncentracją danych wokół średniej. Oznacza to, że zmienność danych jest mniejsza, a obserwacje są bardziej skupione wokół wartości średniej.
+Poszczególne wartości w danych są mniej rozproszone, co może sugerować mniejszą zmienność w badanych zjawiskach.
+
+Gdy σ>1, rozkład logarytmiczno-normalny wykazuje większą zmienność w danych. To oznacza, że obserwacje są bardziej rozproszone wokół średniej.
+Wartości są bardziej odchylone od średniej, co sugeruje większą zmienność w badanych zmiennych.
+Warto zauważyć, że dla σ<1 rozkład ten przypomina bardziej rozkład normalny, ze względu na większą koncentrację wokół średniej. Natomiast dla σ>1 obserwacje są bardziej rozproszone, co może wskazywać na większą zmienność w danych.
+
+
+
+
+
+
+
+
+
+
+
+

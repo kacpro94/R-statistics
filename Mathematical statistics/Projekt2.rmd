@@ -1,0 +1,848 @@
+---
+title: "Rpism2markdown"
+author: '416623'
+date: "2024-01-12"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# W1. Asseco Business Solutions SA (ABS)
+
+Zaczniemy od wyliczenia stóp zwrotu tygodniowych.
+Plik z danymi dziennymi: abs_d, tygodniowymi: abs_w.
+
+```{r message = FALSE, warning = FALSE}
+abs_d<-read.csv("C:/Users/smpop/Downloads/abs_d.csv")
+abs_w<-read.csv("C:/Users/smpop/Downloads/abs_w.csv")
+stopy_zwrotu_dzienne<-data.frame("stopy_zwrotu"=diff(log(abs_d$Zamkniecie)))
+stopy_zwrotu_tygodniowe<-data.frame("stopy_zwrotu_t"=diff(log(abs_w$Zamkniecie)))
+```
+
+```{r message = FALSE, warning=FALSE}
+library(tidyverse)
+library(moments)
+```
+
+## Całość zaczniemy od statystyk dziennych.
+
+```{r}
+
+srednia_dzienne<-mean(stopy_zwrotu_dzienne$stopy_zwrotu)
+odchyl_dzienne<-sd(stopy_zwrotu_dzienne$stopy_zwrotu)
+skosnosc<-skewness(stopy_zwrotu_dzienne$stopy_zwrotu)
+kurtosis<-kurtosis(stopy_zwrotu_dzienne$stopy_zwrotu)
+```
+
+```{r echo=FALSE}
+cat("Średnia:", srednia_dzienne, "\n")
+cat("Odchylenie standardowe:", odchyl_dzienne, "\n")
+cat("Skośność:", skosnosc, "\n")
+cat("Kurtoza:", kurtosis, "\n")
+```
+```{r echo=FALSE}
+srednie<-srednia_dzienne
+odchylenia<-odchyl_dzienne
+skosnosci<-skosnosc
+kurtozy<-kurtosis
+```
+
+
+```{r message = FALSE}
+ggplot()+
+  geom_histogram(aes(x=stopy_zwrotu_dzienne$stopy_zwrotu), fill = "skyblue", color="blue")
+
+ggplot()+
+  geom_boxplot(aes(x=stopy_zwrotu_dzienne$stopy_zwrotu))
+```
+
+```{r}
+dzienne<-stopy_zwrotu_dzienne$stopy_zwrotu
+```
+
+
+## Badanie zgodności 1. (rozkład normalny)
+Naszym pierwszym zadaniem jest zbadanie zgodności rozkładu z rozkładem normalnym, przy pomocy testów: chi-kwadrat, Kołmogorowa i Shapiro-Wilka.
+
+### Shapiro-Wilka
+```{r}
+shapiro.test(dzienne)
+```
+--> Odrzucamy h0.
+```{r echo =FALSE}
+shapiro<-shapiro.test(dzienne)$p.value
+```
+
+
+### Kołmogorowa-smirnowa
+```{r warning=FALSE}
+ks.test(dzienne,"pnorm", mean = mean(dzienne), sd = sd(dzienne))
+```
+--> Odrzucamy h0.
+```{r echo=FALSE, warning=FALSE}
+ks_norm<-ks.test(dzienne,"pnorm", mean = mean(dzienne), sd = sd(dzienne))$p.value
+```
+
+
+
+### Chi-kwadrat
+
+Zaczniemy od odpowiedniej tabeli, podzieloną dzięki funkcji qnorm.
+
+Mean oraz Sd estymujemy metodą największej wiarygodności.
+
+Dane dzielimy na 20 klas.
+
+Początkowo dostajemy:
+
+```{r}
+k<-numeric(0)
+for (x in 0:20)
+{
+  x<-qnorm(x/20, mean = mean(dzienne), sd = sd(dzienne))
+  k<-c(k,x)
+}
+
+df<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21])
+head(df,5)
+```
+
+Aktualizujemy tabelę o zliczone wartości:
+
+```{r}
+n<-numeric(0)
+for(i in 1:20)
+{
+  n<-c(n,length(dzienne[dzienne>k[i] & dzienne<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21], "n"= n[1:20])
+print(df)
+
+```
+
+Zliczone wartości znajdują się w wektorze 'n'. Wykonujemy test Chi-kwadrat.
+
+```{r}
+chisq.test(n, p = rep(0.05, 20))
+
+```
+--> Odrzucamy h0.
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-chisq.test(n, p = rep(0.05, 20))$p.value
+```
+
+
+## Badanie zgodności 2. (rozkład t-Studenta)
+
+Zaczniemy od estymacji stopni swobody. Korzystamy ze wzoru wariancja = stopnie swobody/ (stopnie swobody - 2 ).
+Zgodnie z zaleceniami przemnożymy dane przez 100.
+
+```{r}
+
+dzienne100 <- dzienne * 100
+stop_sw <- function (x) { 
+wariancja <- sd(x) ^2
+round ( 2*wariancja/ (wariancja-1) , 0 )
+}
+
+dfi<-stop_sw(dzienne100)
+print(dfi)
+```
+
+
+### Chi-kwadrat
+
+Podobnie jak poprzednie buduję data.frame():
+
+```{r}
+k<-numeric(0)
+for (x in 0:20)
+{
+  x<-qt(x/20, df=dfi)
+  k<-c(k,x)
+}
+
+dane<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21])
+head(dane,5)
+```
+```{r}
+n<-numeric(0)
+for(i in 1:20)
+{
+  n<-c(n,length(dzienne100[dzienne100>k[i] & dzienne100<k[i+1]])) 
+}
+dane<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21], "n"= n[1:20])
+print(dane)
+chisq.test(n, p = rep(0.05, 20))
+```
+--> Odrzucamy h0.
+```{r echo=FALSE}
+chi_tstud<-chisq.test(n, p = rep(0.05, 20))$p.value
+```
+
+
+### Kołmogorowa-smirnowa
+
+```{r message=FALSE, warning=FALSE}
+ks.test(dzienne100,"pt", df=dfi)
+```
+--> Odrzucamy h0.
+
+```{r echo=FALSE, warning=FALSE}
+ks_tstud<-ks.test(dzienne100,"pt", df=dfi)$p.value
+```
+
+
+
+
+## Dane tygodniowe 
+
+```{r}
+srednia_tyg<-mean(stopy_zwrotu_tygodniowe$stopy_zwrotu_t)
+odchyl_tyg<-sd(stopy_zwrotu_tygodniowe$stopy_zwrotu_t)
+skosnosc_tyg<-skewness(stopy_zwrotu_tygodniowe$stopy_zwrotu_t)
+kurtosis_tyg<-kurtosis(stopy_zwrotu_tygodniowe$stopy_zwrotu_t)
+```
+
+```{r echo=TRUE}
+srednie<-c(srednie,srednia_tyg)
+odchylenia<-c(odchylenia, odchyl_tyg)
+skosnosci<-c(skosnosci,skosnosc_tyg)
+kurtozy<-c(kurtozy,kurtosis_tyg)
+```
+
+```{r echo=FALSE}
+cat("Średnia:", srednia_dzienne, "\n")
+cat("Odchylenie standardowe:", odchyl_dzienne, "\n")
+cat("Skośność:", skosnosc, "\n")
+cat("Kurtoza:", kurtosis, "\n")
+```
+```{r message = FALSE}
+ggplot()+
+  geom_histogram(aes(x=stopy_zwrotu_tygodniowe$stopy_zwrotu_t), fill = "skyblue", color="blue")
+
+ggplot()+
+  geom_boxplot(aes(x=stopy_zwrotu_tygodniowe$stopy_zwrotu_t))
+```
+```{r}
+tygodniowe<-stopy_zwrotu_tygodniowe$stopy_zwrotu_t
+```
+
+
+## Badanie zgodności 1. (rozkład normalny)
+Naszym pierwszym zadaniem jest zbadanie zgodności rozkładu z rozkładem normalnym, przy pomocy testów: chi-kwadrat, Kołmogorowa i Shapiro-Wilka.
+
+### Shapiro-Wilka
+```{r}
+shapiro.test(tygodniowe)
+```
+--> Odrzucamy h0 (wartość jednak jest bliska 0.05).
+```{r echo=FALSE}
+shapiro<-c(shapiro, shapiro.test(tygodniowe)$p.value)
+```
+
+### Kołmogorowa-smirnowa
+```{r warning=FALSE}
+ks.test(tygodniowe,"pnorm", mean = mean(tygodniowe), sd = sd(tygodniowe))
+```
+--> Przyjmujemy h0, rozkład zgodny z rozkładem normalnym.
+```{r echo=FALSE,warning=FALSE}
+ks_norm<-c(ks_norm, ks.test(tygodniowe,"pnorm", mean = mean(tygodniowe), sd = sd(tygodniowe))$p.value)
+```
+
+
+### Chi-kwadrat
+
+Mean oraz Sd estymujemy metodą największej wiarygodności.
+
+Dane dzielimy na 10 klas.
+
+Początkowo dostajemy:
+
+```{r}
+k<-numeric(0)
+for (x in 0:10)
+{
+  x<-qnorm(x/10, mean = mean(tygodniowe), sd = sd(tygodniowe))
+  k<-c(k,x)
+}
+
+df<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11])
+head(df,5)
+```
+
+Aktualizujemy tabelę o zliczone wartości:
+
+```{r}
+n<-numeric(0)
+for(i in 1:10)
+{
+  n<-c(n,length(tygodniowe[tygodniowe>k[i] & tygodniowe<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11], "n"= n[1:10])
+print(df)
+
+```
+
+Zliczone wartości znajdują się w wektorze 'n'. Wykonujemy test Chi-kwadrat.
+
+```{r}
+chisq.test(n, p = rep(0.1, 10))
+
+```
+--> Przyjmujemy hipotezę h0.
+```{r echo=FALSE} 
+chi_norm <-c(chi_norm,chisq.test(n, p = rep(0.1, 10))$p.value)
+```
+
+
+
+## Badanie zgodności 2. (rozkład t-Studenta)
+
+Estymujemy liczbę stopni swobody:
+
+```{r}
+tygodniowe100 <- tygodniowe * 100
+stop_sw <- function (x) { 
+wariancja <- sd(x) ^2
+round ( 2*wariancja/ (wariancja-1) , 0 )
+}
+
+dfi<-stop_sw(tygodniowe100)
+print(dfi)
+```
+
+### Chi-kwadrat
+
+```{r}
+k<-numeric(0)
+for (x in 0:10)
+{
+  x<-qt(x/10, df=dfi)
+  k<-c(k,x)
+}
+
+dane<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11])
+head(dane,5)
+```
+
+
+```{r}
+n<-numeric(0)
+for(i in 1:10)
+{
+  n<-c(n,length(tygodniowe100[tygodniowe100>k[i] & tygodniowe100<k[i+1]])) 
+}
+dane<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11], "n"= n[1:10])
+print(dane)
+chisq.test(n, p = rep(0.1, 10))
+```
+--> Odrzucamy hipotezę h0.
+
+```{r echo=FALSE} 
+chi_tstud <-c(chi_tstud ,chisq.test(n, p = rep(0.1, 10))$p.value)
+```
+
+### Kołmogorowa-smirnowa
+
+```{r warning=FALSE}
+ks.test(tygodniowe100,"pt", df=dfi)
+```
+
+```{r echo=FALSE,warning=FALSE}
+ks_tstud<-c(ks_tstud, ks.test(tygodniowe100,"pt", df=dfi)$p.value)
+```
+--> Odrzucamy hipotezę h0.
+
+```{r echo=FALSE}
+zestawione_dane<-data.frame("srednie" = srednie, "odch_std" = odchylenia,"skosnosci"=skosnosci,
+                            "kurtozy" = kurtozy, "kolsmir_norm" = ks_norm, "chi_norm" = chi_norm,
+                            "shapiro" = shapiro, "kolsmir_tstud" = ks_tstud, "chi_tstud" = chi_tstud)
+rownames(zestawione_dane)<-c("dzienne", "tygodniowe")
+```
+
+Zestawmy ze sobą wszystkie dane oraz p.value testów: 
+
+```{r}
+print(zestawione_dane)
+```
+
+# W2. Asseco Business Solutions SA (ABS) (1/3 danych)
+
+Jako, że obliczenia  będą analogiczne, pominiemy podobne obliczenia, pokażemy tylko różnice w testach Chi-kwadrat.
+
+```{r echo=FALSE, warning=FALSE}
+set.seed(123)
+dzienne<-sample(stopy_zwrotu_dzienne$stopy_zwrotu, 166)
+tygodniowe<-sample(stopy_zwrotu_tygodniowe$stopy_zwrotu_t,35)
+
+
+srednie<-mean(dzienne)
+odchylenia<-sd(dzienne)
+skosnosci<-skewness(dzienne)
+kurtozy<-kurtosis(dzienne)
+
+srednie<-c(srednie, mean(tygodniowe))
+odchylenia<-c(odchylenia,sd(tygodniowe))
+skosnosci<-c(skosnosci, skewness(tygodniowe))
+kurtozy<-c(kurtozy, kurtosis(tygodniowe))
+
+#dzienne
+#normalny
+shapiro<-shapiro.test(dzienne)$p.value
+ks_norm<-ks.test(dzienne,"pnorm", mean = mean(dzienne), sd = sd(dzienne))$p.value
+
+```
+
+Danych dziennych mamy 166, zatem podzielimy dane na 12 klas.
+
+```{r echo=FALSE}
+k<-numeric(0)
+for (x in 0:12)
+{
+  x<-qnorm(x/12, mean = mean(dzienne), sd = sd(dzienne))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:12)
+{
+  n<-c(n,length(dzienne[dzienne>k[i] & dzienne<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:12], "gorna_gr"=k[2:13], "n"= n[1:12])
+print("Chi, rozk. norm:")
+print(df)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-chisq.test(n, p = rep(1/12, 12))$p.value
+#tstudenta
+dzienne100 <- dzienne * 100
+dfi<-stop_sw(dzienne100)
+#chikwadrat-tstud
+k<-numeric(0)
+for (x in 0:12)
+{
+  x<-qt(x/12, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:12)
+{
+  n<-c(n,length(dzienne100[dzienne100>k[i] & dzienne100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:12], "gorna_gr"=k[2:13], "n"= n[1:12])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-chisq.test(n, p = rep(1/12, 12))$p.value
+#ks-tstud
+ks_tstud<-ks.test(dzienne100,"pt", df=dfi)$p.value
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+# tygodniowe
+#normalny
+shapiro<-c(shapiro,shapiro.test(tygodniowe)$p.value)
+ks_norm<-c(ks_norm, ks.test(tygodniowe,"pnorm", mean = mean(tygodniowe), sd = sd(tygodniowe))$p.value)
+
+```
+
+Danych tygodniowych mamy 35, więc do testów chi-kwadrat dzielimy je na 6 klas.
+```{r echo=FALSE, warning=FALSE}
+k<-numeric(0)
+for (x in 0:6)
+{
+  x<-qnorm(x/6, mean = mean(tygodniowe), sd = sd(tygodniowe))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:6)
+{
+  n<-c(n,length(tygodniowe[tygodniowe>k[i] & tygodniowe<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:6], "gorna_gr"=k[2:7], "n"= n[1:6])
+print("Chi, rozk. norm:")
+print(df)
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-c(chi_norm, chisq.test(n, p = rep(1/6, 6))$p.value)
+
+#tstudenta
+
+tygodniowe100 <- tygodniowe * 100
+dfi<-stop_sw(tygodniowe100)
+
+
+k<-numeric(0)
+for (x in 0:6)
+{
+  x<-qt(x/6, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:6)
+{
+  n<-c(n,length(tygodniowe100[tygodniowe100>k[i] & tygodniowe100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:6], "gorna_gr"=k[2:7], "n"= n[1:6])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-c(chi_tstud, chisq.test(n, p = rep(1/6, 6))$p.value)
+#ks-tstud
+ks_tstud<-c(ks_tstud, ks.test(tygodniowe100,"pt", df=dfi)$p.value)
+
+```
+
+Ostatecznie dostajemy takie wyniki: 
+
+```{r echo=FALSE, message = FALSE}
+boxplot(dzienne, tygodniowe, names=c("Dzienne","tygodniowe"), col = c("skyblue", "red"), border = c("black", "black") ,bg="lightgrey")
+title("Wykres pudełkowy")
+
+plot(density(dzienne), col = "blue", main = "Wykresy Gęstości Dziennych i Tygodniowych", xlab = "Wartości", ylab = "Gęstość", xlim = c(min(dzienne, tygodniowe), max(dzienne, tygodniowe)))
+lines(density(tygodniowe), col = "red")
+
+# Dodajemy legendę
+legend("topright", legend = c("Dzienne", "Tygodniowe"), fill = c("blue", "red"))
+```
+
+
+
+```{r echo=FALSE, warning=FALSE}
+zestawione_dane<-data.frame("srednie" = srednie, "odch_std" = odchylenia,"skosnosci"=skosnosci,
+                            "kurtozy" = kurtozy, "kolsmir_norm" = ks_norm, "chi_norm" = chi_norm,
+                            "shapiro" = shapiro, "kolsmir_tstud" = ks_tstud, "chi_tstud" = chi_tstud)
+rownames(zestawione_dane)<-c("dzienne", "tygodniowe")
+print(zestawione_dane)
+
+```
+
+
+#### Wyniki
+Dla rozkładu dziennego widzimy zgodności z oboma testami Kołmogorova-Smirnowa.
+Dla rozkładu tygodniowego jednogłośna zgodność z rozkładem normalnym, przeciwnie w przypadku rozkładu t-Studenta.
+
+# W1. AmRest Holdings SE (EAT)
+```{r echo=FALSE, warning=FALSE}
+eat_d<-read.csv("C:/Users/smpop/Downloads/eat_d.csv")
+eat_w<-read.csv("C:/Users/smpop/Downloads/eat_w.csv")
+stopy_zwrotu_dzienne<-data.frame("stopy_zwrotu"=diff(log(eat_d$Zamkniecie)))
+stopy_zwrotu_tygodniowe<-data.frame("stopy_zwrotu_t"=diff(log(eat_w$Zamkniecie)))
+
+dzienne<-stopy_zwrotu_dzienne$stopy_zwrotu
+tygodniowe<-stopy_zwrotu_tygodniowe$stopy_zwrotu_t
+
+srednie<-mean(dzienne)
+odchylenia<-sd(dzienne)
+skosnosci<-skewness(dzienne)
+kurtozy<-kurtosis(dzienne)
+
+srednie<-c(srednie, mean(tygodniowe))
+odchylenia<-c(odchylenia,sd(tygodniowe))
+skosnosci<-c(skosnosci, skewness(tygodniowe))
+kurtozy<-c(kurtozy, kurtosis(tygodniowe))
+
+#dzienne
+#normalny
+shapiro<-shapiro.test(dzienne)$p.value
+ks_norm<-ks.test(dzienne,"pnorm", mean = mean(dzienne), sd = sd(dzienne))$p.value
+
+```
+
+```{r echo=FALSE}
+k<-numeric(0)
+for (x in 0:20)
+{
+  x<-qnorm(x/20, mean = mean(dzienne), sd = sd(dzienne))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:20)
+{
+  n<-c(n,length(dzienne[dzienne>k[i] & dzienne<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21], "n"= n[1:20])
+print("Chi, rozk. norm:")
+print(df)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-chisq.test(n, p = rep(1/20, 20))$p.value
+#tstudenta
+dzienne100 <- dzienne * 100
+dfi<-stop_sw(dzienne100)
+#chikwadrat-tstud
+k<-numeric(0)
+for (x in 0:20)
+{
+  x<-qt(x/20, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:20)
+{
+  n<-c(n,length(dzienne100[dzienne100>k[i] & dzienne100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:20], "gorna_gr"=k[2:21], "n"= n[1:20])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-chisq.test(n, p = rep(1/20, 20))$p.value
+#ks-tstud
+ks_tstud<-ks.test(dzienne100,"pt", df=dfi)$p.value
+
+```
+
+
+Tygodniowe: 
+```{r echo=FALSE, warning=FALSE}
+# tygodniowe
+#normalny
+shapiro<-c(shapiro,shapiro.test(tygodniowe)$p.value)
+ks_norm<-c(ks_norm, ks.test(tygodniowe,"pnorm", mean = mean(tygodniowe), sd = sd(tygodniowe))$p.value)
+
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+k<-numeric(0)
+for (x in 0:10)
+{
+  x<-qnorm(x/10, mean = mean(tygodniowe), sd = sd(tygodniowe))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:10)
+{
+  n<-c(n,length(tygodniowe[tygodniowe>k[i] & tygodniowe<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11], "n"= n[1:10])
+print("Chi, rozk. norm:")
+print(df)
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-c(chi_norm, chisq.test(n, p = rep(1/10, 10))$p.value)
+
+#tstudenta
+
+tygodniowe100 <- tygodniowe * 100
+dfi<-stop_sw(tygodniowe100)
+
+
+k<-numeric(0)
+for (x in 0:10)
+{
+  x<-qt(x/10, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:10)
+{
+  n<-c(n,length(tygodniowe100[tygodniowe100>k[i] & tygodniowe100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:10], "gorna_gr"=k[2:11], "n"= n[1:10])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-c(chi_tstud, chisq.test(n, p = rep(1/10, 10))$p.value)
+#ks-tstud
+ks_tstud<-c(ks_tstud, ks.test(tygodniowe100,"pt", df=dfi)$p.value)
+
+```
+
+
+
+
+Ostatecznie dostajemy takie wyniki: 
+
+```{r echo=FALSE, message = FALSE}
+boxplot(dzienne, tygodniowe, names=c("Dzienne","tygodniowe"), col = c("skyblue", "red"), border = c("black", "black") ,bg="lightgrey")
+title("Wykres pudełkowy")
+
+plot(density(dzienne), col = "blue", main = "Wykresy Gęstości Dziennych i Tygodniowych", xlab = "Wartości", ylab = "Gęstość", xlim = c(min(dzienne, tygodniowe), max(dzienne, tygodniowe)))
+lines(density(tygodniowe), col = "red")
+
+# Dodajemy legendę
+legend("topright", legend = c("Dzienne", "Tygodniowe"), fill = c("blue", "red"))
+```
+
+
+
+
+
+
+```{r echo=FALSE, warning=FALSE}
+zestawione_dane<-data.frame("srednie" = srednie, "odch_std" = odchylenia,"skosnosci"=skosnosci,
+                            "kurtozy" = kurtozy, "kolsmir_norm" = ks_norm, "chi_norm" = chi_norm,
+                            "shapiro" = shapiro, "kolsmir_tstud" = ks_tstud, "chi_tstud" = chi_tstud)
+rownames(zestawione_dane)<-c("dzienne", "tygodniowe")
+print(zestawione_dane)
+
+```
+
+#### Wyniki
+Zgodność z rozkładem normalnym dla danych dziennych wskazuje tylko test Kołmogorova Smirnova. Żaden jeśli chodzi o zgodność z rozkładem t-Studenta.
+W przypadku danych tygodniowych, widzimy zgodność z rozkładem normalnym dla testów Chi-kwadrat oraz Kołmogorova-Smirnowa.
+
+
+# W2. AmRest Holdings SE (EAT)
+
+```{r echo=FALSE, warning=FALSE}
+set.seed(123)
+dzienne<-sample(stopy_zwrotu_dzienne$stopy_zwrotu, 166)
+tygodniowe<-sample(stopy_zwrotu_tygodniowe$stopy_zwrotu_t,35)
+
+
+srednie<-mean(dzienne)
+odchylenia<-sd(dzienne)
+skosnosci<-skewness(dzienne)
+kurtozy<-kurtosis(dzienne)
+
+srednie<-c(srednie, mean(tygodniowe))
+odchylenia<-c(odchylenia,sd(tygodniowe))
+skosnosci<-c(skosnosci, skewness(tygodniowe))
+kurtozy<-c(kurtozy, kurtosis(tygodniowe))
+
+#dzienne
+#normalny
+shapiro<-shapiro.test(dzienne)$p.value
+ks_norm<-ks.test(dzienne,"pnorm", mean = mean(dzienne), sd = sd(dzienne))$p.value
+
+```
+
+Dzienne:
+```{r echo=FALSE}
+k<-numeric(0)
+for (x in 0:12)
+{
+  x<-qnorm(x/12, mean = mean(dzienne), sd = sd(dzienne))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:12)
+{
+  n<-c(n,length(dzienne[dzienne>k[i] & dzienne<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:12], "gorna_gr"=k[2:13], "n"= n[1:12])
+print("Chi, rozk. norm:")
+print(df)
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-chisq.test(n, p = rep(1/12, 12))$p.value
+#tstudenta
+dzienne100 <- dzienne * 100
+dfi<-stop_sw(dzienne100)
+#chikwadrat-tstud
+k<-numeric(0)
+for (x in 0:12)
+{
+  x<-qt(x/12, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:12)
+{
+  n<-c(n,length(dzienne100[dzienne100>k[i] & dzienne100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:12], "gorna_gr"=k[2:13], "n"= n[1:12])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-chisq.test(n, p = rep(1/12, 12))$p.value
+#ks-tstud
+ks_tstud<-ks.test(dzienne100,"pt", df=dfi)$p.value
+
+```
+
+```{r echo=FALSE, warning=FALSE}
+# tygodniowe
+#normalny
+shapiro<-c(shapiro,shapiro.test(tygodniowe)$p.value)
+ks_norm<-c(ks_norm, ks.test(tygodniowe,"pnorm", mean = mean(tygodniowe), sd = sd(tygodniowe))$p.value)
+
+```
+
+Tygodniowe:
+```{r echo=FALSE, warning=FALSE}
+k<-numeric(0)
+for (x in 0:6)
+{
+  x<-qnorm(x/6, mean = mean(tygodniowe), sd = sd(tygodniowe))
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:6)
+{
+  n<-c(n,length(tygodniowe[tygodniowe>k[i] & tygodniowe<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:6], "gorna_gr"=k[2:7], "n"= n[1:6])
+print("Chi, rozk. norm:")
+print(df)
+```
+
+```{r echo=FALSE, warning=FALSE}
+chi_norm<-c(chi_norm, chisq.test(n, p = rep(1/6, 6))$p.value)
+
+#tstudenta
+
+tygodniowe100 <- tygodniowe * 100
+dfi<-stop_sw(tygodniowe100)
+
+
+k<-numeric(0)
+for (x in 0:6)
+{
+  x<-qt(x/6, df=dfi)
+  k<-c(k,x)
+}
+n<-numeric(0)
+for(i in 1:6)
+{
+  n<-c(n,length(tygodniowe100[tygodniowe100>k[i] & tygodniowe100<k[i+1]])) 
+}
+df<-data.frame("dolna_gr"=k[1:6], "gorna_gr"=k[2:7], "n"= n[1:6])
+print("Chi, rozk. t-studenta:")
+print(df)
+chi_tstud<-c(chi_tstud, chisq.test(n, p = rep(1/6, 6))$p.value)
+#ks-tstud
+ks_tstud<-c(ks_tstud, ks.test(tygodniowe100,"pt", df=dfi)$p.value)
+
+```
+
+
+```{r echo=FALSE, message = FALSE}
+boxplot(dzienne, tygodniowe, names=c("Dzienne","tygodniowe"), col = c("skyblue", "red"), border = c("black", "black") ,bg="lightgrey")
+title("Wykres pudełkowy")
+
+plot(density(dzienne), col = "blue", main = "Wykresy Gęstości Dziennych i Tygodniowych", xlab = "Wartości", ylab = "Gęstość", xlim = c(min(dzienne, tygodniowe), max(dzienne, tygodniowe)))
+lines(density(tygodniowe), col = "red")
+
+# Dodajemy legendę
+legend("topright", legend = c("Dzienne", "Tygodniowe"), fill = c("blue", "red"))
+```
+
+
+
+```{r echo=FALSE, warning=FALSE}
+zestawione_dane<-data.frame("srednie" = srednie, "odch_std" = odchylenia,"skosnosci"=skosnosci,
+                            "kurtozy" = kurtozy, "kolsmir_norm" = ks_norm, "chi_norm" = chi_norm,
+                            "shapiro" = shapiro, "kolsmir_tstud" = ks_tstud, "chi_tstud" = chi_tstud)
+rownames(zestawione_dane)<-c("dzienne", "tygodniowe")
+print(zestawione_dane)
+
+```
+
+### Wyniki
+Dla danych dziennych, widzimy zgodność z rozkładem normalnym tylko w przypadku Kołmogorova Smirnowa.
+Dla danych tygodniowych, widzimy zgodność z rozkładem normalnym w przypadku każdego testu.
