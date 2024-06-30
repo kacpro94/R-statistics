@@ -1,0 +1,155 @@
+---
+title: "Zadanie 12"
+author: "Kacper Prorok"
+date: "2024-05-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Treść zadania:
+Za pomocą odpowiednich symulacji zbadać moc testu Kołmogorowa-Smirnowa w przypadku,gdy rozważane próbki danych pochodzą w rozkładów normalnych o tym samym odchyleniu standardowym, ale różniących się wartościami oczekiwanymi.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tseries)
+library(nortest)
+```
+
+# Symulacja 1
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+m1 <- seq(8,23,by=0.5)
+#odchylenia standardowe
+df<-c(0.5,1,2,15)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(m=m1,df=df, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+kolomogrowFun<-function(m1,df,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rnorm(n,m1,df),rnorm(n,15,df))$p.value<0.05))
+  
+}
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-kolomogrowFun(params[i,1],params[i,2],params[i,3],1000)
+}
+
+params<-cbind(params,"moc"=wyniki)
+
+```
+
+
+## Wykres 
+
+```{r}
+
+ggplot(params,aes(x=m,y=moc,color=factor(length)))+
+  geom_line()+
+  facet_wrap(~df,nrow=2)+
+   labs(title = "Moc testu dla różnych odchyleń standardowych",
+       x="wartość oczekiwana",
+       y="moc testu",
+       color="liczności próbki")
+```
+
+
+*Wartość oczekiwana drugiego rozkładu wynosiła 15*
+
+
+# Symulacja 2
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+m1 <- seq(-8,8,by=0.5)
+#parametr shape
+df<-c(0.5,1,2,15)
+#długość próby
+lengths <- c(10,20,100,500)
+params <- expand.grid(m=m1,df=df, length = lengths)
+
+
+```
+
+## Kod
+
+```{r}
+kolomogrowFun<-function(m1,df,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rnorm(n,m1,df),rnorm(n,0,df))$p.value<0.05))
+  
+}
+
+```
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-kolomogrowFun(params[i,1],params[i,2],params[i,3],1000)
+}
+
+params<-cbind(params,"moc"=wyniki)
+
+```
+
+## Wykres
+
+```{r}
+
+ggplot(params,aes(x=m,y=moc,color=factor(length)))+
+  geom_line()+
+  facet_wrap(~df,nrow=2)+
+   labs(title = "Moc testu dla różnych odchyleń standardowych",
+       x="wartość oczekiwana",
+       y="moc testu",
+       color="liczności próbki")
+```
+
+
+*Wartość oczekiwana drugiego rozkładu wynosiła 0*
+
+
+#Wnioski
+
+- Nim większa próbka tym moc testu kołmogorowa-Smirnowa jest większa (w każdym przpadku)
+
+- Wraz ze wzrastaniem odchylenia standardowego widzimy znaczny spadek mocy testu
+
+- Duże próbki (>500) lepiej radzą sobie ze zwiększaniem odchylenia standardowego
+
+- Nie ma znaczenia jakie wartości oczekiwane będą miały rozkłady - sytuacja zawsze będzie podobna

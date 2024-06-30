@@ -1,0 +1,207 @@
+---
+title: "Zadanie 5"
+author: "Kacper Prorok"
+date: "2024-04-19"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej (tzn. błąd
+I rodzaju) w teście istotności współczynnika korelacji w przypadku, gdy dane pochodzą z rozkładu
+normalnego o różnych parametrach.
+
+Symulacja odbędzie się na następujących wartościach:
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+
+# Symulacja 1
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 500
+#wartości oczekiwane
+ms <- seq(-10, 10, by = 0.5)
+#poziomy istotności
+#długość próby
+lengths <- c(5,25,100,500)
+#Odchylenia standardowe
+sd<-c(2,10,40)
+params <- expand.grid(m = ms, length = lengths,sd=sd)
+
+
+```
+
+## Kod
+
+```{r}
+Spearman<-function(n,m,sd,K){
+  mean(sapply(1:K, function(i) cor.test(rnorm(n,m,sd),rnorm(n,m,sd),method="spearman")$p.value<0.05))
+} 
+
+Pearson<-function(n,m,sd,K){
+ mean(sapply(1:K, function(i) cor.test(rnorm(n,m,sd),rnorm(n,m,sd))$p.value<0.05))
+}
+
+set.seed(420)
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-Spearman(params[i,2],params[i,1],params[i,3],500)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-Pearson(params[i,2],params[i,1],params[i,3],500)
+}
+
+params<-cbind(params,"Spearman"=wyniki)
+params<-cbind(params,"Pearson"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("Spearman","Pearson"),names_to="Test",values_to = "Odsetek")
+```
+
+## Wykres 1
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Spearman")%>%
+  ggplot()+
+  geom_line(aes(x=m,y=Odsetek,color = sd))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Spearman",
+       x="wartość oczekiwana",
+       color="Odchylenie")
+wykres
+
+
+
+```
+
+## Wykres 2
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Pearson")%>%
+  ggplot()+
+  geom_line(aes(x=m,y=Odsetek,color = sd))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Pearson",
+       x="wartość oczekiwana",
+       color="Odchylenie")
+wykres
+
+```
+
+# Symulacja 2
+
+Na powyższych wykresach obydwa rozkłady miały te same wartości oczekiwane oraz odchylenia standardowe. Sprawdzę jeszczę, czy gdy wartości oczekiwane się różnią to wyniki są inne:
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+ms <- seq(-10, 10, by = 0.5)
+#poziomy istotności
+#długość próby
+lengths <- c(5,25,100,500)
+
+sd<-c(2,10,40)
+params <- expand.grid(m = ms, length = lengths,sd=sd)
+
+
+```
+
+
+## Kod
+
+```{r}
+Spearman<-function(n,m,sd,K){
+  mean(sapply(1:K, function(i) cor.test(rnorm(n,5,sd),rnorm(n,m,sd),method="spearman")$p.value<0.05))
+} 
+
+Pearson<-function(n,m,sd,K){
+ mean(sapply(1:K, function(i) cor.test(rnorm(n,5,sd),rnorm(n,m,sd))$p.value<0.05))
+}
+
+set.seed(420)
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-Spearman(params[i,2],params[i,1],params[i,3],500)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-Pearson(params[i,2],params[i,1],params[i,3],500)
+}
+
+params<-cbind(params,"Spearman"=wyniki)
+params<-cbind(params,"Pearson"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("Spearman","Pearson"),names_to="Test",values_to = "Odsetek")
+```
+
+## Wykres 1
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Spearman")%>%
+  ggplot()+
+  geom_line(aes(x=m,y=Odsetek,color = sd))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Spearman",
+       x="wartość oczekiwana",
+       color="Odchylenie")
+wykres
+
+```
+
+## Wykres 2
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Pearson")%>%
+  ggplot()+
+  geom_line(aes(x=m,y=Odsetek,color = sd))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Pearson",
+       x="wartość oczekiwana",
+       color="Odchylenie")
+wykres
+```
+
+
+Bazowy rozkład miał wartość oczekiwaną = 5, a drugi rozkład ma wartość oczekiwaną przedstawioną na osi X. Jak widać nie ma różnicy, czy rozkłady mają taką samą wartość oczekiwaną, czy inną.
+
+
+# Wnioski
+
+- Odsetek odrzuceń prawdziwej hipotezy głównej w obydwóch testach jest bardzo podobny i jest bliski poziomu istotności
+
+- Wartość oczekiwana rozkładów nie wpływa na odrzucenia 
+
+- Odchylenie standardowe nie wpływa na odrzucenia
+
+- Jedyna różnica jaka występuje to wariant testu Spearmana z n=5 - tam odsetek odrzuceń jest niższy i wynosi ok 0.02

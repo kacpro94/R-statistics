@@ -1,0 +1,106 @@
+---
+title: "zad 4 kartka 2"
+author: "Kacper Prorok"
+date: "2024-04-15"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Zadanie polegało na:
+
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej (tzn. błąd
+I rodzaju) w teście Manna-Whitneya i w teście równości dwóch wartości oczekiwanych (funkcja
+t.test) w przypadku, gdy dane pochodzą z rozkładów 𝜒2 o różniej liczbie stopni swobody.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+```
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r message=FALSE, warning=FALSE}
+#stopnie swobody 1 rozkładu
+df1<-c(20,40,60)
+#stopnie swobody 2 rozkładu
+df2<-seq(10,70,by=1)
+#liczności próbek
+n<-c(20,100,500)
+tabelka<-expand.grid(n=n,df_badane=df1,df_przedzial=df2)
+
+```
+
+## Kod
+
+```{r}
+Mann1<-function(df1,df2,n){
+  mean(sapply(1:256, function(i) wilcox.test(rchisq(n,df=df1)-df1,rchisq(n,df=df2)-df2)$p.value<0.05
+              ))
+}
+
+Mann2<-function(df1,df2,n){
+  mean(sapply(1:256, function(i) wilcox.test((rchisq(n,df=df1)-df1)/sqrt(2*df1),(rchisq(n,df=df2)-df2)/sqrt(2*df2))$p.value<0.05
+  ))
+}
+
+
+ttest1<-function(df1,df2,n){
+  
+  mean(sapply(1:256, function(i) t.test(rchisq(n,df=df1)-df1,rchisq(n,df=df2)-df2,mu=0)$p.value<0.05))
+}
+
+
+ttest2<-function(df1,df2,n){
+  
+  mean(sapply(1:256, function(i) t.test((rchisq(n,df=df1)-df1)/sqrt(2*df1),(rchisq(n,df=df2)-df2)/sqrt(2*df2),mu=0)$p.value<0.05))
+}
+
+MannStand<-c()
+MannBezStand<-c()
+TtestStand<-c()
+TtestBezStand<-c()
+for(i in 1:nrow(tabelka))
+{
+  MannStand[i]<-Mann2(tabelka[i,2],tabelka[i,3],tabelka[i,1])
+  MannBezStand[i]<-Mann1(tabelka[i,2],tabelka[i,3],tabelka[i,1])
+  TtestStand[i]<-ttest2(tabelka[i,2],tabelka[i,3],tabelka[i,1])
+ TtestBezStand[i]<-ttest1(tabelka[i,2],tabelka[i,3],tabelka[i,1])
+}
+tabelka<-cbind(tabelka,MannStand)
+tabelka<-cbind(tabelka,MannBezStand)
+tabelka<-cbind(tabelka,TtestStand)
+tabelka<-cbind(tabelka,TtestBezStand)
+
+nowa_tabelka<-tabelka%>%
+  pivot_longer(cols=c("MannStand","MannBezStand","TtestStand","TtestBezStand"),names_to = "Test",values_to = "wynik")
+
+```
+
+## Wykres
+
+```{r}
+nowa_tabelka%>%
+  ggplot(aes(df_przedzial,wynik,color=Test))+
+  geom_line()+
+  labs(x="stopnie swobody drugiego rozkładu",y="Prawdopodobieństwo popełnienia błędu 1 rodzaju")+
+  facet_grid(n~df_badane)
+
+
+```
+
+
+*Na osi X znajdują się stopnie swobody drugiego rozkładu, na osi Y znajduje się odestek odrzuceń prawdziwej hipotezy h0. Na samej górze wykresu widzimy stopnie swobody pierwszego rozkładu, a po prawej stronie liczbę danych*
+
+# Wnioski
+
+- przy mniejszej ilości danych testy zachowują się podobnie i mają podobny odsetek odrzuceń prawdziwej hipotezy głównej
+
+- Przy n=500 dla testu Manna-Whitneya bez standaryzacji widzimy duży wzrost tego odsetka, który najmniejszy jest gdy dwa rozkłady mają tyle samo stopni swobody, a w innych miejscach rośnie

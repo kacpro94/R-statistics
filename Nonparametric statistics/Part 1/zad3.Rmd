@@ -1,0 +1,203 @@
+---
+title: "Zadanie 3"
+author: "Kacper Prorok"
+date: "2024-05-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Treść zadania:
+Za pomocą odpowiednich symulacji zbadać moc testu Kołmogorowa-Smirnowa w przypadku, gdy rozważane próbki danych pochodzą w rozkładów𝜒2 o różnej liczbie stopni swobody. Do celów symulacji proszę przesunąć generowane dane tak, by miały tę samą wartość oczekiwaną.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tseries)
+library(nortest)
+```
+
+# Symulacja 1
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+m<-5
+#stopnie swobody 1 rozkładu
+df1<-seq(6,70,by=1)
+#stopnie swobody 2 rozkładu
+df2<-c(15,30,60)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(m=m,df1=df1,df2=df2, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+chisq2<-function(m1,df1,df2,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rchisq(n,df1),rchisq(n,df2))$p.value<0.05))
+  
+}
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-chisq2(params[i,1],params[i,2],params[i,3],params[i,4],1000)
+}
+
+params<-cbind(params,"moc"=wyniki)
+
+
+
+```
+
+
+## Wykres 
+
+```{r}
+
+ggplot(params,aes(x=df1,y=moc,color=factor(df2)))+
+  geom_line()+
+  facet_wrap(~length,nrow=2)+
+   labs(title = "Moc testu dla różnych stopni swobody przy m=5",
+       x="stopnie swobody pierwszego rozkładu",
+       y="moc testu",
+       color="stopnie swobody drugiego rozkładu")
+```
+
+
+*Nad wykresami znajduje się liczność próbki*
+
+
+# Symulacja 2
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+m<-15
+#stopnie swobody 1 rozkładu
+df1<-seq(6,70,by=1)
+#stopnie swobody 2 rozkładu
+df2<-c(15,30,60)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(m=m,df1=df1,df2=df2, length = lengths)
+
+
+```
+
+## Kod
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-chisq2(params[i,1],params[i,2],params[i,3],params[i,4],1000)
+}
+
+params<-cbind(params,"moc"=wyniki)
+
+```
+
+## Wykres
+
+```{r}
+
+ggplot(params,aes(x=df1,y=moc,color=factor(df2)))+
+  geom_line()+
+  facet_wrap(~length,nrow=2)+
+   labs(title = "Moc testu dla różnych stopni swobody przy m=15",
+       x="stopnie swobody pierwszego rozkładu",
+       y="moc testu",
+       color="stopnie swobody drugiego rozkładu")
+```
+
+
+*Nad wykresami znajduje się liczność próbki*
+
+# Symulacja 3
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+m<-50
+#stopnie swobody 1 rozkładu
+df1<-seq(6,70,by=1)
+#stopnie swobody 2 rozkładu
+df2<-c(15,30,60)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(m=m,df1=df1,df2=df2, length = lengths)
+
+
+```
+
+## Kod
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-chisq2(params[i,1],params[i,2],params[i,3],params[i,4],1000)
+}
+
+params<-cbind(params,"moc"=wyniki)
+
+```
+
+## Wykres
+
+```{r}
+
+ggplot(params,aes(x=df1,y=moc,color=factor(df2)))+
+  geom_line()+
+  facet_wrap(~length,nrow=2)+
+   labs(title = "Moc testu dla różnych stopni swobody przy m=50",
+       x="stopnie swobody pierwszego rozkładu",
+       y="moc testu",
+       color="stopnie swobody drugiego rozkładu")
+```
+
+
+*Nad wykresami znajduje się liczność próbki*
+
+
+# Wnioski
+
+- dobór wartości oczekiwanej nie ma wpływu na zachowanie mocy testu
+
+- wraz ze zwięszkaniem się liczności próbki rośnie moc testu
+
+- wraz ze zwiększaniem stopni swobody rozkładów moc testu maleje 

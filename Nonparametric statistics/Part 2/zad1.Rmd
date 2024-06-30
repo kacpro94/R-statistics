@@ -1,0 +1,280 @@
+---
+title: "Zadanie 1"
+author: "Kacper Prorok"
+date: "2024-04-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Za pomocą odpowiednich symulacji porównać moc klasycznego testu równości dwóch wartości
+oczekiwanych i testu Manna-Whitneya. Porównanie przeprowadzić w przypadku, gdy dane pochodzą
+z dwóch rozkładów normalnych różniących się wartościami oczekiwanymi.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+
+# Symulacja
+
+## Parametry sytuacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+ms <- seq(-10, 10, by = 0.5)
+#długość próby
+lengths <- c(5,25,100,500)
+
+params <- expand.grid(m = ms, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+MannwhitneyFunction<-function(m,n,K,sd,m1){
+  
+  mean(sapply(1:K,function(i) wilcox.test(rnorm(n,m1,sd),rnorm(n,m,sd),alternative = "two.sided",mu=0)$p.value<0.05))
+  
+}
+
+
+
+
+ttestfunction<-function(m,n,K,sd,m1){
+  
+  mean(sapply(1:K,function(i) t.test(rnorm(n,m1,sd),rnorm(n,m,sd),alternative = "two.sided",mu=0)$p.value<0.05))
+  
+}
+
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-ttestfunction(params[i,1],params[i,2],500,2,1)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-MannwhitneyFunction(params[i,1],params[i,2],500,2,1)
+}
+
+params<-cbind(params,"ttest"=wyniki)
+params<-cbind(params,"Mann"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("ttest","Mann"),names_to="Test",values_to = "Moc")
+
+```
+
+## Wykres
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=m,y=Moc,color = factor(Test)))+
+  facet_wrap(~length)+
+  labs(title = "Moc testów gdy m=1 oraz sd=2",
+       x="wartość oczekiwana drugiego rozkładu",
+       color="Test")
+wykres
+
+```
+
+
+# Symulacja 2
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#wartości oczekiwane
+ms <- seq(-10, 10, by = 0.5)
+#długość próby
+lengths <- c(5,25,100,500)
+params <- expand.grid(m = ms, length = lengths)
+
+
+```
+
+## Kod
+
+```{r}
+MannwhitneyFunction<-function(m,n,K,sd,m1){
+  
+  mean(sapply(1:K,function(i) wilcox.test(rnorm(n,m1,sd),rnorm(n,m,sd),alternative = "two.sided",mu=0)$p.value<0.05))
+  
+}
+
+
+
+
+ttestfunction<-function(m,n,K,sd,m1){
+  
+  mean(sapply(1:K,function(i) t.test(rnorm(n,m1,sd),rnorm(n,m,sd),alternative = "two.sided",mu=0)$p.value<0.05))
+  
+}
+
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-ttestfunction(params[i,1],params[i,2],500,15,1)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-MannwhitneyFunction(params[i,1],params[i,2],500,15,1)
+}
+
+params<-cbind(params,"ttest"=wyniki)
+params<-cbind(params,"Mann"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("ttest","Mann"),names_to="Test",values_to = "Moc")
+
+```
+
+## Wykres
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=m,y=Moc,color = factor(Test)))+
+  facet_wrap(~length)+
+  labs(title = "Moc testów gdy m=1 oraz sd=15",
+       x="wartość oczekiwana drugiego rozkładu",
+       color="Test")
+wykres
+
+
+
+
+```
+
+# Symulacja 3
+
+## Parametry sytuacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#Wartości oczekiwane
+ms <- seq(50, 65, by = 0.5)
+#długość próby
+lengths <- c(5,25,100,500)
+params <- expand.grid(m = ms, length = lengths)
+```
+
+## Kod
+
+```{r}
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-ttestfunction(params[i,1],params[i,2],500,15,58)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-MannwhitneyFunction(params[i,1],params[i,2],500,15,58)
+}
+
+params<-cbind(params,"ttest"=wyniki)
+params<-cbind(params,"Mann"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("ttest","Mann"),names_to="Test",values_to = "Moc")
+```
+
+
+## Wykres
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=m,y=Moc,color = factor(Test)))+
+  facet_wrap(~length)+
+  labs(title = "Moc testów gdy m=58 oraz sd=15",
+       x="wartość oczekiwana drugiego rozkładu",
+       color="Test")
+wykres
+
+```
+
+# Symulacja 4
+
+# Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#Wartości oczekiwane
+ms <- seq(15, 25, by = 0.5)
+#długość próby
+lengths <- c(5,25,100,500)
+params <- expand.grid(m = ms, length = lengths)
+```
+
+## Kod
+
+```{r}
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-ttestfunction(params[i,1],params[i,2],500,50,20)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-MannwhitneyFunction(params[i,1],params[i,2],500,50,20)
+}
+
+params<-cbind(params,"ttest"=wyniki)
+params<-cbind(params,"Mann"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("ttest","Mann"),names_to="Test",values_to = "Moc")
+```
+
+## Wykres
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=m,y=Moc,color = factor(Test)))+
+  facet_wrap(~length)+
+  labs(title = "Moc testów gdy m=20 oraz sd=50",
+       x="wartość oczekiwana drugiego rozkładu",
+       color="Test")
+wykres
+```
+
+
+# Wnioski
+
+- Wraz ze wzrostem liczby danych zarówno t-test oraz test Manna-Whitneya mają coraz większą moc
+
+- Wartość oczekiwana rozkładów nie ma wpływu na moc testu
+
+- Im większe jest odchylenie standardowe, tym gorzej radzą sobie oba testy
+
+- Genearlnie t-test oraz test Manna-Whitneya wykazują bardzo podobne wyniki w każdym przypadku

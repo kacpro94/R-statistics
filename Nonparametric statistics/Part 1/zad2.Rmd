@@ -1,0 +1,365 @@
+---
+title: "zad 2 kartka 1"
+author: "Szymon Popkiewicz, Kacper Prorok"
+date: "2024-04-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+dane1 <- 0
+dane2 <- 0
+dane3 <- 0
+dane_chi <- 0
+pval_dane1_ks <- 0
+pval_dane2_ks <- 0
+pval_dane3_ks <- 0
+pval_dane1_chi <- 0
+pval_dane2_chi <- 0
+pval_dane3_chi <- 0
+p_ks1 <- 0
+p_ks2 <- 0
+p_ks3 <- 0
+p_chi1 <- 0
+p_chi2 <- 0
+p_chi3 <- 0
+```
+
+
+
+```{r}
+for(n in seq(1,100,by=3)){
+  for(j in 1:1000){
+    dane1 = rchisq(n, df=10)
+    dane2 = rchisq(n, df=5)
+    dane3 = rchisq(n, df=50)
+    p_ks1[j] = ks.test(dane1,"pchisq", df=10)$p.value
+    p_ks2[j] = ks.test(dane2,"pchisq", df=5)$p.value
+    p_ks3[j] = ks.test(dane3,"pchisq", df=50)$p.value
+    dane_chi <- sort(dane1)
+    il_klas <- ceiling(sqrt(length(dane_chi)))
+    LICZEBNOSCI <- 0
+    MAXCHI <- max(dane_chi)
+    MINCHI <- min(dane_chi)
+    ROZST <- (MAXCHI-MINCHI)/il_klas
+    KWANTYLE_KLAS <- 0
+    for(i in 1:il_klas){
+      KWANTYLE_KLAS[i] =  MINCHI+ROZST*i
+    }
+    LICZEBNOSCI[1] = sum(dane_chi<(KWANTYLE_KLAS[1]))
+    for(i in 2:il_klas){
+      LICZEBNOSCI[i] = sum(dane_chi<(KWANTYLE_KLAS[i]) & dane_chi>=(KWANTYLE_KLAS[i-1]))
+    }
+    LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+    sum(LICZEBNOSCI)
+    DYST_KLAS <- pchisq(KWANTYLE_KLAS, df=10)
+    DYST_KLAS[il_klas] = 1
+    PRAWD <- 0
+    for(i in 1:il_klas){
+      if(i==1){
+        PRAWD[i] = DYST_KLAS[i]
+      }
+      else{
+        PRAWD[i] = DYST_KLAS[i] - sum(PRAWD[1:i-1])
+      }
+    }
+    sum(PRAWD)
+    TABELKA <- data.frame(licz = LICZEBNOSCI, prawd = PRAWD)
+    p_chi1[j] = chisq.test(x=TABELKA$licz, p=TABELKA$prawd)$p.value
+    dane_chi <- sort(dane2)
+    il_klas <- ceiling(sqrt(length(dane_chi)))
+    LICZEBNOSCI <- 0
+    MAXCHI <- max(dane_chi)
+    MINCHI <- min(dane_chi)
+    ROZST <- (MAXCHI-MINCHI)/il_klas
+    KWANTYLE_KLAS <- 0
+    for(i in 1:il_klas){
+      KWANTYLE_KLAS[i] =  MINCHI+ROZST*i
+    }
+    LICZEBNOSCI[1] = sum(dane_chi<(KWANTYLE_KLAS[1]))
+    for(i in 2:il_klas){
+      LICZEBNOSCI[i] = sum(dane_chi<(KWANTYLE_KLAS[i]) & dane_chi>=(KWANTYLE_KLAS[i-1]))
+    }
+    LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+    sum(LICZEBNOSCI)
+    DYST_KLAS <- pchisq(KWANTYLE_KLAS, df=5)
+    DYST_KLAS[il_klas] = 1
+    PRAWD <- 0
+    for(i in 1:il_klas){
+      if(i==1){
+        PRAWD[i] = DYST_KLAS[i]
+      }
+      else{
+        PRAWD[i] = DYST_KLAS[i] - sum(PRAWD[1:i-1])
+      }
+    }
+    sum(PRAWD)
+    TABLEKA <- data.frame(licz = LICZEBNOSCI, prawd = PRAWD)
+    p_chi2[j] = chisq.test(x=TABLEKA$licz, p=TABLEKA$prawd)$p.value
+    dane_chi <- sort(dane3)
+    il_klas <- ceiling(sqrt(length(dane_chi)))
+    LICZEBNOSCI <- 0
+    MAXCHI <- max(dane_chi)
+    MINCHI <- min(dane_chi)
+    ROZST <- (MAXCHI-MINCHI)/il_klas
+    KWANTYLE_KLAS <- 0
+    for(i in 1:il_klas){
+      KWANTYLE_KLAS[i] =  MINCHI+ROZST*i
+    }
+    LICZEBNOSCI[1] = sum(dane_chi<(KWANTYLE_KLAS[1]))
+    for(i in 2:il_klas){
+      LICZEBNOSCI[i] = sum(dane_chi<(KWANTYLE_KLAS[i]) & dane_chi>=(KWANTYLE_KLAS[i-1]))
+    }
+    LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+    sum(LICZEBNOSCI)
+    DYST_KLAS <- pchisq(KWANTYLE_KLAS, df=50)
+    DYST_KLAS[il_klas] = 1
+    PRAWD <- 0
+    for(i in 1:il_klas){
+      if(i==1){
+        PRAWD[i] = DYST_KLAS[i]
+      }
+      else{
+        PRAWD[i] = DYST_KLAS[i] - sum(PRAWD[1:i-1])
+      }
+    }
+    sum(PRAWD)
+    TABELKA <- data.frame(licz = LICZEBNOSCI, prawd = PRAWD)
+    p_chi3[j] = chisq.test(x=TABELKA$licz, p=TABELKA$prawd)$p.value
+  }
+  pval_dane1_ks[n-100] = round(sum(p_ks1<0.05)/1000, digits = 3)
+  pval_dane2_ks[n-100] = round(sum(p_ks2<0.05)/1000, digits = 3)
+  pval_dane3_ks[n-100] = round(sum(p_ks3<0.05)/1000, digits = 3)
+  pval_dane1_chi[n-100] = round(sum(p_chi1<0.05)/1000, digits = 3)
+  pval_dane2_chi[n-100] = round(sum(p_chi2<0.05)/1000, digits = 3)
+  pval_dane3_chi[n-100] = round(sum(p_chi3<0.05)/1000, digits = 3)
+}
+WKS2 <-data.frame(odsetek_Kolmogorow = numeric(),
+                  n = numeric(),
+                  nazwa=character())
+
+WKS2 <- rbind(WKS2,data.frame(odsetek_Kolmogorow = pval_dane1_ks,
+                              n = c(101:200),
+                              nazwa = rep("Kolmogorow v = 10 p = 0.05",100)))
+WKS2 <- rbind(WKS2,data.frame(odsetek_Kolmogorow = pval_dane2_ks,
+                              n = c(101:200),
+                              nazwa = rep("Kolmogorow v = 5 p = 0.05",100)))
+
+WKS2 <- rbind(WKS2,data.frame(odsetek_Kolmogorow = pval_dane3_ks,
+                              n = c(101:200),
+                              nazwa = rep("Kolmogorow v = 50 p = 0.05",100)))
+WCHI2 <-data.frame(odsetek_chi = numeric(),
+                   n = numeric(),
+                   nazwa=character())
+
+WCHI2 <- rbind(WCHI2,data.frame(odsetek_chi = pval_dane1_chi,
+                                n = c(101:200),
+                                nazwa = rep("Chi-kwadrat v = 10 p = 0.05",100)))
+WCHI2 <- rbind(WCHI2,data.frame(odsetek_chi = pval_dane2_chi,
+                                n = c(101:200),
+                                nazwa = rep("Chi-kwadrat v = 5 p = 0.05",100)))
+
+WCHI2 <- rbind(WCHI2,data.frame(odsetek_chi = pval_dane3_chi,
+                                n = c(101:200),
+                                nazwa = rep("Chi-kwadrat v = 50 p = 0.05",100)))
+PLOTKS2<- ggplot(data=WKS2,aes(x=n,y=odsetek_Kolmogorow,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Kolmogorowa\n dla zmiennej liczby danych(n)")+ xlab("Liczba danych(n)") + ylab("Odsetek odrzucen")
+
+PLOTCHI2<- ggplot(data=WCHI2,aes(x=n,y=odsetek_chi,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Chi-kwadrat\n dla zmiennej liczby danych(n)")+ xlab("Liczba danych(n)") + ylab("Odsetek odrzucen")
+
+PLOTKS2
+PLOTCHI2
+```
+
+
+
+```{r}
+ks_PIT <- 0
+p_ks_PIT <- 0
+p_chi_PIT <- 0
+chi_PIT <- 0
+PIT_ks_pval_005 <-0
+pval_005_ks <- 0
+PIT_chi_pval_005 <-0
+pval_005_chi <- 0
+chi <- 0
+Qchi <- 0
+Dystrybuanta_chi <- 0
+jednostajny <- 0
+for(k in 1:100){
+  for(j in 1:1000){
+    chi = rchisq(101, df = k)
+    Qchi = quantile(chi, probs = seq(0.01,1,0.01), names = FALSE)
+    Dystrybuanta_chi = pchisq(Qchi,k)
+    p_ks_PIT[j] = ks.test(chi,"pchisq", df=k)$p.value
+    ks_PIT[j] = ks.test(Dystrybuanta_chi, "punif", min = 0, max = 1)$p.value
+    il_klas <- ceiling(sqrt(length(Dystrybuanta_chi)))
+    LICZEBNOSCI <- 0
+    MAXCHI <- max(Dystrybuanta_chi)
+    MINCHI <- min(Dystrybuanta_chi)
+    ROZST <- (MAXCHI-MINCHI)/il_klas
+    LICZEBNOSCI[1] = sum(Dystrybuanta_chi<(MINCHI+(ROZST)))
+    for(l in 2:il_klas){
+      LICZEBNOSCI[l] = sum(Dystrybuanta_chi<(MINCHI+(ROZST*l)) & Dystrybuanta_chi>=(MINCHI+(ROZST*(l-1))))
+    }
+    LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+    jednostajny[1:il_klas] = il_klas/100
+    chi_PIT = chisq.test(LICZEBNOSCI, p=jednostajny)$p.value
+    dane_chi <- sort(chi)
+    il_klas <- ceiling(sqrt(length(dane_chi)))
+    LICZEBNOSCI <- 0
+    MAXCHI <- max(dane_chi)
+    MINCHI <- min(dane_chi)
+    ROZST <- (MAXCHI-MINCHI)/il_klas
+    KWANTYLE_KLAS <- 0
+    for(i in 1:il_klas){
+      KWANTYLE_KLAS[i] =  MINCHI+ROZST*i
+    }
+    LICZEBNOSCI[1] = sum(dane_chi<(KWANTYLE_KLAS[1]))
+    for(i in 2:il_klas){
+      LICZEBNOSCI[i] = sum(dane_chi<(KWANTYLE_KLAS[i]) & dane_chi>=(KWANTYLE_KLAS[i-1]))
+    }
+    LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+    sum(LICZEBNOSCI)
+    DYST_KLAS <- pchisq(KWANTYLE_KLAS, df=k)
+    DYST_KLAS[il_klas] = 1
+    PRAWD <- 0
+    for(i in 1:il_klas){
+      if(i==1){
+        PRAWD[i] = DYST_KLAS[i]
+      }
+      else{
+        PRAWD[i] = DYST_KLAS[i] - sum(PRAWD[1:i-1])
+      }
+    }
+    sum(PRAWD)
+    TABLEKA <- data.frame(licz = LICZEBNOSCI, prawd = PRAWD)
+    p_chi_PIT[j] = chisq.test(x=TABLEKA$licz, p=TABLEKA$prawd)$p.value
+  }
+  pval_005_ks[k] = round(sum(p_ks_PIT<0.05)/1000, digits = 3)
+  PIT_ks_pval_005[k] = round(sum(ks_PIT<0.05)/1000, digits = 3)
+  pval_005_chi[k] = round(sum(p_chi_PIT<0.05)/1000, digits = 3)
+  PIT_chi_pval_005[k] = round(sum(chi_PIT<0.05)/1000, digits = 3)
+}
+WKS3 <- data.frame(odsetek_Kolmogorow = numeric(),
+                   stopnie_swobody = numeric(),
+                   nazwa = character())
+WKS3 <- rbind(WKS3,data.frame(odsetek_Kolmogorow = pval_005_ks,
+                              stopnie_swobody = c(1:100),
+                              nazwa = rep("Kolmogorow p = 0.05 bez PIT",100)))
+WKS3 <- rbind(WKS3,data.frame(odsetek_Kolmogorow = PIT_ks_pval_005,
+                              stopnie_swobody = c(1:100),
+                              nazwa = rep("Kolmogorow p = 0.05 PIT",100)))
+WCHI3 <- data.frame(odsetek_chi = numeric(),
+                    stopnie_swobody = numeric(),
+                    nazwa = character())
+WCHI3 <- rbind(WCHI3,data.frame(odsetek_chi = pval_005_chi,
+                                stopnie_swobody = c(1:100),
+                                nazwa = rep("Chi-kwadrat p = 0.05 bez PIT",100)))
+WCHI3 <- rbind(WCHI3,data.frame(odsetek_chi = PIT_chi_pval_005,
+                                stopnie_swobody = c(1:100),
+                                nazwa = rep("Chi-kwadrat p = 0.05 PIT",100)))
+PLOT_KS_3<- ggplot(data=WKS3,aes(x=stopnie_swobody,y=odsetek_Kolmogorow,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Kolmogorowa\n dla zmiennych stopni swobody(n)")+ xlab("Stopnie swobody") + ylab("Odsetek odrzucen")
+PLOTCHI3<- ggplot(data=WCHI3,aes(x=stopnie_swobody,y=odsetek_chi,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Chi-kwadrat\n dla zmiennych stopni swobody")+ xlab("Stopnie swobody") + ylab("Odsetek odrzucen")
+PLOT_KS_3
+PLOTCHI3 
+ks_PIT <- 0
+p_ks_PIT <- 0
+p_chi_PIT <- 0
+chi_PIT <- 0
+PIT_ks_pval_005 <-0
+pval_005_ks <- 0
+PIT_chi_pval_005 <-0
+pval_005_chi <- 0
+chi <- 0
+Qchi <- 0
+Dystrybuanta_chi <- 0
+jednostajny <- 0
+for(n in 11:210){
+  k <- 5
+  chi = rchisq(n, DF = k)
+  Qchi = quantile(chi, probs = seq(0.01,1,0.01), names = FALSE)
+  Dystrybuanta_chi = pchisq(Qchi,k)
+  p_ks_PIT[j] = ks.test(chi,"pchisq", df=k)$p.value
+  ks_PIT[j] = ks.test(Dystrybuanta_chi, "punif", min = 0, max = 1)$p.value
+  il_klas <- ceiling(sqrt(length(Dystrybuanta_chi)))
+  LICZEBNOSCI <- 0
+  MAXCHI <- max(Dystrybuanta_chi)
+  MINCHI <- min(Dystrybuanta_chi)
+  ROZST <- (MAXCHI-MINCHI)/il_klas
+  LICZEBNOSCI[1] = sum(Dystrybuanta_chi<(MINCHI+(ROZST)))
+  for(l in 2:il_klas){
+    LICZEBNOSCI[l] = sum(Dystrybuanta_chi<(MINCHI+(ROZST*l)) & Dystrybuanta_chi>=(MINCHI+(ROZST*(l-1))))
+  }
+  LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+  jednostajny[1:il_klas] = il_klas/100
+  chi_PIT = chisq.test(LICZEBNOSCI, p=jednostajny)$p.value
+  dane_chi <- sort(chi)
+  il_klas <- ceiling(sqrt(length(dane_chi)))
+  LICZEBNOSCI <- 0
+  MAXCHI <- max(dane_chi)
+  MINCHI <- min(dane_chi)
+  ROZST <- (MAXCHI-MINCHI)/il_klas
+  KWANTYLE_KLAS <- 0
+  for(i in 1:il_klas){
+    KWANTYLE_KLAS[i] =  MINCHI+ROZST*i
+  }
+  LICZEBNOSCI[1] = sum(dane_chi<(KWANTYLE_KLAS[1]))
+  for(i in 2:il_klas){
+    LICZEBNOSCI[i] = sum(dane_chi<(KWANTYLE_KLAS[i]) & dane_chi>=(KWANTYLE_KLAS[i-1]))
+  }
+  LICZEBNOSCI[il_klas]=LICZEBNOSCI[il_klas]+1
+  sum(LICZEBNOSCI)
+  DYST_KLAS <- pchisq(KWANTYLE_KLAS, df=k)
+  DYST_KLAS[il_klas] = 1
+  PRAWD <- 0
+  for(i in 1:il_klas){
+    if(i==1){
+      PRAWD[i] = DYST_KLAS[i]
+    }
+    else{
+      PRAWD[i] = DYST_KLAS[i] - sum(PRAWD[1:i-1])
+    }
+  }
+  sum(PRAWD)
+  TABLEKA <- data.frame(licz = LICZEBNOSCI, prawd = PRAWD)
+  p_chi_PIT[j] = chisq.test(x=TABLEKA$licz, p=TABLEKA$prawd)$p.value
+}
+pval_005_ks[n-10] = round(sum(p_ks_PIT<0.05)/100, digits = 3)
+PIT_ks_pval_005[n-10] = round(sum(ks_PIT<0.05)/100, digits = 3)
+pval_005_chi[n-10] = round(sum(p_chi_PIT<0.05)/100, digits = 3)
+PIT_chi_pval_005[n-10] = round(sum(chi_PIT<0.05)/100, digits = 3)
+
+DOKS4<- data.frame(odsetek_Kolmogorow = numeric(),
+                   n = numeric(),
+                   nazwa = character())
+DOKS4 <- rbind(DOKS4,data.frame(odsetek_Kolmogorow = pval_005_ks,
+                                n = c(11:210),
+                                nazwa = rep("Kolmogorow p = 0.05 bez PIT",100)))
+DOKS4 <- rbind(DOKS4,data.frame(odsetek_Kolmogorow = PIT_ks_pval_005,
+                                n = c(11:210),
+                                nazwa = rep("Kolmogorow p = 0.05 PIT",100)))
+DOCHI4 <- data.frame(odsetek_chi = numeric(),
+                     n = numeric(),
+                     nazwa = character())
+DOCHI4 <- rbind(DOCHI4,data.frame(odsetek_chi = pval_005_chi,
+                                  n = c(11:210),
+                                  nazwa = rep("Chi-kwadrat p = 0.05 bez PIT",100)))
+DOCHI4 <- rbind(DOCHI4,data.frame(odsetek_chi = PIT_chi_pval_005,
+                                  n = c(11:210),
+                                  nazwa = rep("Chi-kwadrat p = 0.05 PIT",100)))
+PLOT_KS_4<- ggplot(data=DOKS4,aes(x=n,y=odsetek_Kolmogorow,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Kolmogorowa\n dla zmiennej liczby danych(n)")+ xlab("Liczba danych(n)") + ylab("Odsetek odrzucen")
+PLOT_CHI_4<- ggplot(data=DOCHI4,aes(x=n,y=odsetek_chi,color=nazwa))+geom_point()+geom_smooth(se=FALSE)+
+  ggtitle("Wspolczynnik odrzucen dla testow Chi-kwadrat\n dla zmiennej liczby danych(n)")+ xlab("Liczba danych(n)") + ylab("Odsetek odrzucen")
+PLOT_KS_4
+PLOT_CHI_4
+```

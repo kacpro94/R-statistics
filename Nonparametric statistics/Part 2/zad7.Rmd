@@ -1,0 +1,130 @@
+---
+title: "Zadanie 7"
+author: "Kacper Prorok"
+date: "2024-04-21"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej (tzn. błąd
+I rodzaju) w teście istotności współczynnika korelacji w przypadku, gdy dane pochodzą z rozkładu o
+grubych ogonach (np. 𝑡-Studenta o różnych stopniach swobody).
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 500
+#stopnie swobody 1 rozkładu
+df1 <- seq(3,45,by=3)
+
+#długość próby
+lengths <- c(5,25,100,500)
+
+#stopnie swobody 2 rozkładu
+df2 <- seq(3,45,by=3)
+params <- expand.grid(df1 = df1, df2=df2, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+Spearman<-function(n,df1,df2,K){
+  mean(sapply(1:K, function(i) cor.test(rt(n,df1),rt(n,df2),method="spearman")$p.value<0.05))
+} 
+
+Pearson<-function(n,df1,df2,K){
+ mean(sapply(1:K, function(i) cor.test(rt(n,df1),rt(n,df2))$p.value<0.05))
+}
+
+set.seed(422)
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-Spearman(params[i,3],params[i,1],params[i,2],500)
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-Pearson(params[i,3],params[i,1],params[i,2],500)
+}
+
+params<-cbind(params,"Spearman"=wyniki)
+params<-cbind(params,"Pearson"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("Spearman","Pearson"),names_to="Test",values_to = "Odsetek")
+```
+
+
+## Wykres 1
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Spearman")%>%
+  ggplot()+
+  geom_point(aes(x=df1,y=df2,color = Odsetek))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Spearman",
+       x="stopnie swobody 1 rozkładu",
+       y="stopnie swobody 2 rozkładu",
+       color="Odsetek odrzuceń")
+wykres
+
+
+
+```
+
+*liczba danych znajduje się nad wykresami*
+
+## Wykres 2
+
+```{r}
+wykres<-params%>%
+  filter(Test=="Pearson")%>%
+  ggplot()+
+  geom_point(aes(x=df1,y=df2,color = Odsetek))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń prawdziwej H0 - test Pearson",
+       x="stopnie swobody 1 rozkładu",
+       y="stopnie swobody 2 rozkładu",
+       color="Odsetek odrzuceń")
+wykres
+```
+
+*liczba danych znajduje się nad wykresami*
+
+
+
+# Wnioski
+
+- Odsetek odrzuceń prawdziwej hipotezy H0 jest w przypadku obydwóch testów bardzo bliski 0.05, czyli poziomu istotności
+
+- W przypadku obydwóch testów odsetek odrzuceń hipotezy H0 nie zmienia się w zależności od stopni swobody rozkładów
+
+- W przypadku obydówch testów odsetek odrzuceń hipotezy H0 nie zmienia się w zależności od liczby danych
+
+- Dla testu istotności korelacji Spearmana widzimy, że dla małych liczebności test ma niższy odsetek odrzuceń hipotezy H0
+
+-  W przyadku testu Spearmana widzimy ciekawe zachowanie gdy próbka ma małą liczność (n=5) - odsetek odrzuceń hipotezy h0 jest niższy i wynosi około 0.02
+

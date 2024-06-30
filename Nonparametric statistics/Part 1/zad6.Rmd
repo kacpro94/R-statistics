@@ -1,0 +1,139 @@
+---
+title: "Zadanie 6"
+author: "Kacper Prorok"
+date: "2024-05-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tseries)
+library(nortest)
+```
+
+
+Treść zadania:
+Za pomocą odpowiednich symulacji zbadać moc testu Kołmogorowa, testu Lillieforsa i testu
+Andersona-Darlinga (z hipotezą główną, że cecha ma rozkład normalny) w przypadku, gdy dane
+pochodzą z rozkładu 𝑡-Studenta 
+
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#stopnie swobody
+df<-seq(3,30,by=0.5)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(df=df, length = lengths)
+
+
+```
+
+## Kod
+
+```{r}
+kolomogrow<-function(df,n,K){
+  
+  mean(replicate(n=1000,expr = { 
+    data<-rt(n,df)
+    ks.test((data-mean(data)/sd(data)),"pnorm")$p.value<0.05
+  }))
+                 
+  
+}
+
+lilie<-function(df,n,K){
+  
+  mean(replicate(n=1000,expr = { 
+    data<-rt(n,df)
+    lillie.test((data-mean(data)/sd(data)))$p.value<0.05
+  }))
+                 
+  
+}
+
+anderson<-function(df,n,K){
+  
+  mean(replicate(n=1000,expr = { 
+    data<-rt(n,df)
+    ad.test((data-mean(data)/sd(data)))$p.value<0.05
+  }))
+                 
+  
+}
+
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-kolomogrow(params[i,1],params[i,2])
+}
+
+params<-cbind(params,"Kolmogrow"=wyniki)
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-lilie(params[i,1],params[i,2])
+}
+
+params<-cbind(params,"lilie"=wyniki1)
+
+wyniki2<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki2[i]<-anderson(params[i,1],params[i,2])
+}
+
+params<-cbind(params,"Anderson"=wyniki2)
+
+params2<-params%>%
+  pivot_longer(cols=Kolmogrow:Anderson,names_to = "Test",values_to = "moc")
+
+
+```
+
+
+## Wykres
+
+```{r}
+ggplot(params2,aes(x=df,y=moc,color=factor(Test)))+
+  geom_line()+
+  facet_wrap(~length,ncol=2)+
+   labs(title = "Moc testu dla różnych liczności próbek",
+       x="stopnie swobody",
+       y="moc testu",
+       color="Test")
+```
+
+
+# Wnioski
+
+- Wraz ze zwiększaniem stopni swobody rozkładu t-studenta zmniejsza się moc wszystkich 3 testów
+
+- Małe liczności próbek powodują bardzo słabe moce testów
+
+- Test Andersona-Darlinga poradził sobie najlepiej we wszystkich licznościach próbek
+
+- Test Kołmogorowa zdecydowanie jest najgorszy

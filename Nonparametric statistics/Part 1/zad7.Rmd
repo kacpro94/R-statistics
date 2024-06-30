@@ -1,0 +1,148 @@
+---
+title: "Zadanie 7"
+author: "Kacper Prorok"
+date: "2024-04-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+W zadaniu badamy moc testu Kołmogorowa-Smirnowa(test zgodności dwóch rozkładów) w przypadku, gdy
+rozważane próbki danych pochodzą w rozkładów normalnych o tej samej wartości oczekiwanej, ale o
+różnych odchyleniach standardowych. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+```
+
+
+
+# Symulacja 
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#odchylenia standardowe 1 rozkładu
+sigmas <- seq(1, 100, by = 1)
+#wartości oczekiwane
+ms <- c(0,1,25,100)
+#długość próby
+lengths <- c(100)
+#odchylenia standardowe 2 rozkładu
+odchylenia1<-c(40,70,10)
+
+params <- expand.grid(odchyl1 = sigmas, m = ms, length = lengths,odchyl2=odchylenia1)
+
+```
+
+
+## Kod 1
+
+```{r}
+smirnov<-function(df,n,a,K,df1){
+  
+  mean(sapply(1:K,function(i) ks.test(rnorm(n,mean = a,sd=df),"pnorm",mean=a,sd=df1)$p.value<0.05))
+  
+}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-smirnov(params[i,1],params[i,3],params[i,2],500,params[i,4])
+}
+
+
+
+params<-cbind(params,wyniki)
+
+```
+
+
+## Wykres 1
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=odchyl1,y=wyniki,color = factor(odchyl2)))+
+  facet_wrap(~ m, nrow = 2)+
+  labs(title="Moc testu w zależności od wartości oczekiwanej",
+       x="Odchylenie",
+       y="Moc testu",
+       color="Odchylenie")
+wykres
+```
+
+
+*Na osi X znajduje się odchylenie standardowe z jednego rozkładu, a kolorem znajduje się drugi rozkład o odchyleniach przedstawionych w legendzie. Nad wykresami znajduje się wartość oczekiwana *
+
+
+## Kod 2
+
+```{r}
+#ilość symulacji
+N <- 1000
+#odchylenia standardowe 1 rozkładu
+sigmas <- seq(1, 100, by = 1)
+#Wartość oczekiwana
+ms <- c(4)
+#długość próby
+lengths <- c(10,50,100,500)
+#odchylenia standardowe 2 rozkładu
+odchylenia1<-c(40,70,10)
+
+params <- expand.grid(odchyl1 = sigmas, m = ms, length = lengths,odchyl2=odchylenia1)
+
+```
+
+```{r}
+
+smirnov<-function(df,n,a,K,df1){
+  
+  mean(sapply(1:K,function(i) ks.test(rnorm(n,mean = a,sd=df),"pnorm",mean=a,sd=df1)$p.value<0.05))
+  
+}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-smirnov(params[i,1],params[i,3],params[i,2],500,params[i,4])
+}
+
+
+
+params<-cbind(params,wyniki)
+
+```
+
+## Wykres 2
+
+```{r}
+wykres<-ggplot(params)+
+  geom_line(aes(x=odchyl1,y=wyniki,color = factor(odchyl2)))+
+  facet_wrap(~ length, nrow = 2)+
+  labs(title="Moc testu w zależności od liczby danych",
+       x="Odchylenie",
+       y="Moc testu",
+       color="Odchylenie")
+wykres
+
+```
+
+
+*Na osi X znajduje się odchylenie standardowe z jednego rozkładu, a kolorem znajduje się drugi rozkład o odchyleniach przedstawionych w legendzie. Nad wykresami znajduje się liczba danych *
+
+# Wnioski
+
+- Wraz ze wzrostem odchylenia standardowego moc testu Kołomogrowa-Smirnova maleje - jeśli weźmiemy dwa rozkłady o takiej samej wartości oczekiwanej i o innych odchyleniach
+
+- Wartość oczekiwana nie ma wpływu na moc testu
+
+- Wraz ze wzrostem danych rośnie moc testu

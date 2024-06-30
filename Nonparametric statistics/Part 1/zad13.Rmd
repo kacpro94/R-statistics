@@ -1,0 +1,147 @@
+---
+title: "Zadanie 13"
+author: "Kacper Prorok"
+date: "2024-05-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Treść zadania:
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej w teście Kołmogorowa-Smirnowa w przypadku, gdy rozważane próbki pochodzą z tego samego rozkładu. Rozważyć dwa różne rozkłady asymetryczne.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tseries)
+library(nortest)
+```
+
+# Symulacja 1
+
+## Parametry symulacji
+
+Użyję rozkładu Weibulla.
+
+```{r}
+#ilość symulacji
+N <- 1000
+#parametr scale
+sc <- seq(3,30,by=1)
+#parametr shape
+sh<-c(0.5,1,2,15)
+#długość próby
+lengths <- c(10,20,100,500)
+params <- expand.grid(sh=sh,sc=sc, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+Weibullfun<-function(sh,sc,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rweibull(n,sh,sc),rweibull(n,sh,sc))$p.value<0.05))
+  
+}
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-Weibullfun(params[i,1],params[i,2],params[i,3],1000)
+}
+
+params<-cbind(params,"Weibull"=wyniki)
+```
+
+
+## Wykres
+
+```{r}
+
+ggplot(params,aes(x=sc,y=Weibull,color=factor(length)))+
+  geom_line()+
+  facet_wrap(~sh,nrow=2)+
+   labs(title = "Odsetek odrzuceń hipotezy prawdziwej H0 dla różnych parametrów shape",
+       x="wartość parametru scale",
+       y="Odsetek odrzuceń",
+       color="liczności próbki")
+```
+
+
+# Symulacja 2
+
+## Parametry symulacji
+
+Użyję rozkładu Chi2
+
+```{r}
+#ilość symulacji
+N <- 1000
+#parametr scale
+df <- seq(3,30,by=1)
+#długość próby
+lengths <- c(10,20,100,500)
+params1 <- expand.grid(df=df, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+Chi2fun<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rchisq(n,df),rchisq(n,df))$p.value<0.05))
+  
+}
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params1))
+for(i in dlugosc){
+  wyniki1[i]<-Chi2fun(params1[i,1],params1[i,2],1000)
+}
+
+params1<-cbind(params1,"chi2"=wyniki1)
+
+```
+
+## Wykres
+
+```{r}
+
+ggplot(params1,aes(x=df,y=chi2,color=factor(length)))+
+  geom_line()+
+   labs(title = "Odsetek odrzuceń hipotezy prawdziwej H0",
+       x="stopnie swobody rozkładu chi2",
+       y="Odsetek odrzuceń",
+       color="liczności próbki")
+  
+
+```
+
+
+
+# Wnioski
+
+- Dla rozkładu chi2 oraz rozkładu Weibulla widzimy podobne zależności
+
+- Dla małych liczności próbek odsetek odrzuceń prawdziwej hipotezy H0 w teście Kołmogorowa-Smirnova jest niski - mniejszy od 0.02. Wraz ze zwiększaniem liczności próbki odsetek ten rośnie i zatrzymuje się gdzieś w okolicy 0.05.
+
+- zmienianie parametrów rozkładu Weibulla nie wpłyneło na odsetek odrzuceń hipotezy H0
+
+- zmienianie stopni swobody rozkładu chi2 nie wpłyneło na odsetek odrzuceń hipotezy H0

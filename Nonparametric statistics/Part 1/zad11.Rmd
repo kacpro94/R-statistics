@@ -1,0 +1,124 @@
+---
+title: "Zadanie 11"
+author: "Kacper Prorok"
+date: "2024-04-02"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Zadanie polegało na : 
+Za pomocą odpowiednich symulacji zbadać moc testów: Jarque-Bera, Shapiro-Wilka i Lillieforsa w
+przypadku, gdy dane pochodzą z rozkładu 𝑡-Studenta
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(tidyr)
+library(tseries)
+library(nortest)
+```
+
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 1000
+#stopnie swobody
+df <- seq(3,30,by=1)
+#długość próby
+lengths <- c(10,20,100,500)
+
+params <- expand.grid(df = df, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+Shapirofun<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) shapiro.test(rt(n,df))$p.value<0.05))
+  
+}
+
+
+
+
+Jarekfun<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) jarque.bera.test(rt(n,df))$p.value<0.05))
+  
+}
+
+Liliefun<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) lillie.test(rt(n,df))$p.value<0.05))
+  
+}
+
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-Shapirofun(params[i,1],params[i,2],1000)
+}
+
+params<-cbind(params,"shapiro"=wyniki)
+
+
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki1[i]<-Jarekfun(params[i,1],params[i,2],1000)
+}
+
+params<-cbind(params,"jarque"=wyniki1)
+
+
+wyniki2<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki2[i]<-Liliefun(params[i,1],params[i,2],1000)
+}
+
+params<-cbind(params,"lilie"=wyniki2)
+
+params1<-params%>%
+  pivot_longer(cols=shapiro:lilie,names_to = "Test",values_to = "moc")
+
+```
+
+## Wykres
+
+```{r}
+ggplot(params1,aes(x=df,y=moc,color=Test))+
+  geom_line()+
+  facet_wrap(~length,nrow=2)
+```
+
+
+
+*Na osi X znajdują się stopnie swobody, na osi Y moc testu. Nad wykresami znajduje się liczebność próbki.*
+
+
+# Wnioski
+
+- Test Jarque-Bera radzi sobie słabo przy małych próbkach, ale za to bardzo dobrze przy większych próbkach
+
+- Test Shapiro-Wilka radzi sobie całkiem nieźle w każdej sytuacji - przy małych oraz przy większych próbkach
+
+- Test Lillieforse radzi sobie dobrze przy małych próbkach, a przy dużych radzi sobie źle.
+
+

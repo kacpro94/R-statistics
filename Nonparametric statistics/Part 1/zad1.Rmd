@@ -1,0 +1,164 @@
+---
+title: "Zadanie 1"
+author: "Kacper Prorok"
+date: "2024-04-01"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+
+Zadanie opierało się na porównaniu mocy testu Shapiro-Wilka, testu Kołmogorowa i testu𝜒^2
+(z hipotezą główną, że cecha ma rozkład normalny) w przypadku, gdy dane pochodzą z rozkładu
+𝑡-Studenta lub innej klasy rozkładów symetrycznych.
+
+# Symulacja
+
+
+## Parametry symulacji 
+
+```{r}
+#ilość symulacji
+N <- 1000
+#stopnie swobody
+dfs <- seq(1, 25, by = 2)
+#długość próby
+lengths <- c(10,50,150,500)
+
+params <- expand.grid(df = dfs, length = lengths)
+
+
+```
+
+
+## Kod
+
+```{r}
+shapiro<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) shapiro.test(rt(n,df))$p.value<0.05))
+  
+}
+
+
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-shapiro(params[i,1],params[i,2],1000)
+}
+
+
+
+params<-cbind(params,"shapiro"=wyniki)
+
+
+```
+
+
+```{r}
+
+
+kolomogorow<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i) ks.test(rt(n,df),pnorm)$p.value<0.05))
+  
+}
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-kolomogorow(params[i,1],params[i,2],1000)
+}
+
+
+
+params<-cbind(params,"kolomogrow"=wyniki)
+
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+
+chi2<-function(df,n){
+  dane<-rt(n,df)
+  k<-numeric(0)
+  klasy<-5
+  for (x in 0:klasy)
+  {
+    x<-qnorm(x/klasy, mean = mean(dane), sd = sd(dane))
+    k<-c(k,x)
+  }
+  df<-data.frame("dolna_gr"=k[1:klasy], "gorna_gr"=k[2:(klasy+1)])
+  head(df,5)
+  n<-numeric(0)
+  for(i in 1:klasy)
+  {
+    n<-c(n,length(dane[dane>k[i] & dane<k[i+1]])) 
+  }
+  df<-data.frame("dolna_gr"=k[1:klasy], "gorna_gr"=k[2:(klasy+1)],"n"= n[1:klasy])
+  return(df$n)
+  
+}
+
+
+
+chi2moc<-function(df,n,K){
+  
+  mean(sapply(1:K,function(i)  chisq.test(chi2(df,n))$p.value<0.05))
+}
+
+
+# w funkcji chi2 daje 500 symulacji, ponieważ 1000 za długo trwało!
+
+wyniki<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-chi2moc(params[i,1],params[i,2],500)
+}
+
+
+
+params<-cbind(params,"chi2"=wyniki)
+
+
+dane<-params%>%
+  pivot_longer(cols=c("shapiro","kolomogrow","chi2"),names_to="Test",values_to="Moc")
+
+```
+
+## Wykres
+
+```{r}
+
+ggplot(dane,aes(x=df,y=Moc,color = factor(Test)))+
+  geom_line()+
+  facet_wrap(~ length, nrow = 2)+
+  labs(color="Test")
+  
+    
+
+```
+
+*Na osi X znajdują się stopnie swobody, na osi Y moc testu. Nad wykresami znajduje się liczebność próbki.*
+
+
+# Wnioski
+
+- Wraz ze wzrostem liczby danych we wszystkich testach zwiększyła się moc, ale najbardziej w teście Shapiro-Wilka.
+
+- Wraz ze wzrostrem liczby stopni swobody rozkładu t-studenta wszystkie testy stopniowo mają mniejszą moc. Jest to spowodowane tym, że test t-studenta coraz bardziej przypomina rozkład normalny, więc rośnie prawdopodobieństwo że test może się pomylić.
+
+- Najlepiej z trzech testów poradził sobie test Shapiro-Wilka (szczególnie przy dużej próbce). Przy małych próbkach moce testów wyszły bardzo zbliżone.

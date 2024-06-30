@@ -1,0 +1,89 @@
+---
+title: "Zadanie 3"
+author: "Kacper Prorok"
+date: "2024-04-15"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Zadanie polegało na:
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej w teście Manna
+Whitneya i w teście równości dwóch wartości oczekiwanych (funkcja t.test) w przypadku, gdy jedne 
+dane pochodzą z rozkładu normalnego, a drugie np. z rozkładu 𝜒2  (który nie jest rozkładem 
+symetrycznym).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+```
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r message=FALSE, warning=FALSE}
+n<-c(10,20,100,400,600,900)
+df<-c(3:32)
+params<-expand.grid(n=n,df=df)
+
+```
+
+
+## Kod
+
+```{r}
+
+mann_whit<-function(df,n)
+{
+  mean(sapply(1:256, function(i) wilcox.test(rnorm(n),(rchisq(n,df=df)-df)/sqrt(df))$p.value<0.05))
+}
+
+
+
+
+t_test<-function(df,n)
+{
+  mean(sapply(1:256, function(i) t.test(rnorm(n),(rchisq(n,df=df)-df)/sqrt(df), mu=0)$p.value<0.05))
+}
+
+MannWhit<-c()
+T_test<-c()
+
+
+for(i in 1:nrow(params))
+{
+  MannWhit[i]<-mann_whit(params[i,2],params[i,1])
+  T_test[i]<-t_test(params[i,2],params[i,1])
+}
+params<-cbind(params,MannWhit)
+
+params<-cbind(params,T_test)
+
+nowa_params<-params%>%
+  pivot_longer(cols=c("MannWhit","T_test"),names_to = "test",values_to = "wynik")
+
+```
+
+## Wykres
+
+```{r}
+ggplot(nowa_params, aes(df, wynik, color=test))+
+  geom_point()+
+  geom_line(stat="smooth")+
+  facet_wrap(~n)+
+  scale_color_manual(values = c("MannWhit" = "green", "T_test" = "orange"))
+
+```
+
+*Na osi X znajdują się stopnie swobody rozkładu chi2, na osi Y odestek odrzuceń hipotezy głównej. Nad wykresami znajduje się liczba danych. Rozkład normalny ma parametry (0,1)*
+
+# Wnioski
+
+- Wraz ze wzrostem ilości danych wzrasta prawdopodobieństwo, że test Manna Whitneya popełni błąd 1 rodzaju
+
+- T-test niezależnie od ilości danych oraz liczby stopni swobody zachowuje się podobnie

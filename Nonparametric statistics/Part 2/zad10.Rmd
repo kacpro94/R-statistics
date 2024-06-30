@@ -1,0 +1,121 @@
+---
+title: "Zadanie 10"
+author: "Kacper Prorok"
+date: "2024-04-22"
+output: 
+  html_document:
+    theme: journal
+    toc: yes
+    toc_float:
+      collapsed: true
+---
+
+Za pomocą odpowiednich symulacji zbadać odsetek odrzuceń prawdziwej hipotezy głównej (tzn. błąd
+I rodzaju) w ANOVA i teście Kruskala-Wallisa w przypadku, gdy generowane dane mają różne
+wariancje w grupach. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+# Symulacja
+
+## Parametry symulacji
+
+```{r}
+#ilość symulacji
+N <- 500
+#Odchylenia standardowe
+sd <- seq(0.2,30,by=0.6)
+#Liczności grup
+lengths <- c(5,25,100,500)
+params <- expand.grid(sd=sd, length = lengths)
+
+
+```
+
+## Kod
+
+```{r}
+
+
+ANOVA<-function(n,sd,K){
+  wartości<-c()
+    mean(replicate(n=K,expr = {
+      
+        grupa1=rnorm(n,0,1)
+        grupa2=rnorm(n,0,sd)
+        grupa3=rnorm(n,0,1)
+        
+       dane <- data.frame(grupy = rep(c("grupa1","grupa2","grupa3"),each=n), values = c(grupa1,grupa2,grupa3))
+    
+        wartości<-c(wartości,summary(aov(values~grupy,data=dane))[[1]]$`Pr(>F)`[1]<0.05)
+    }
+  ))
+}
+
+KRUSKAL<-function(n,sd,K){
+  wartości<-c()
+    mean(replicate(n=K,expr = {
+      
+        grupa1=rnorm(n,0,1)
+        grupa2=rnorm(n,0,sd)
+        grupa3=rnorm(n,0,1)
+        
+       dane <- data.frame(grupy = rep(c("grupa1","grupa2","grupa3"),each=n), values = c(grupa1,grupa2,grupa3))
+    
+       wartości<-c(wartości,kruskal.test(values~grupy,data = dane)$p.value<0.05)
+    }
+  ))
+}
+
+
+wyniki<-c()
+wyniki1<-c()
+dlugosc<-c(1:nrow(params))
+for(i in dlugosc){
+  wyniki[i]<-ANOVA(params[i,2],params[i,1],500)
+   wyniki1[i]<-KRUSKAL(params[i,2],params[i,1],500)
+}
+
+params<-cbind(params,"ANOVA"=wyniki)
+params<-cbind(params,"Kruskal_Wallis"=wyniki1)
+
+params<-params%>%
+  pivot_longer(cols=c("ANOVA","Kruskal_Wallis"),names_to="Test",values_to = "Odsetek")
+
+```
+
+
+## Wykres
+
+```{r}
+wykres<-params%>%
+  ggplot()+
+  geom_line(aes(x=sd,y=Odsetek,color = Test))+
+  facet_wrap(~length)+
+  labs(title = "Odsetek odrzuceń hipotezy prawdziwej H0",
+       x="iloraz odchylenia standardowego",
+       y="Odsetek odrzuceń",
+       color="Test")
+wykres
+
+
+```
+
+*liczebności danych znajdują się nad wykresami*
+
+Wszystkie trzy rozkłady miały wartość oczekiwaną równą 0. Zmieniane było tylko odchylenie standardowe w jednym z tych rozkładów (w jednej z grup).
+
+
+
+# Wnioski
+
+- wraz ze wzrostem ilorazu odchylenia standardowego rośnie odsetek odrzuceń prawdziwej hipotezy H0.
+
+- Oby dwa testy wykazują bardzo podobne wyniki, jedynie gdy liczność jest mała, to test ANOVA zdaje się być bardziej wrażliwszy na wzrost odchylenia standardowego i wykazuje troszkę wyższe odsetki odrzuceń
+
+
